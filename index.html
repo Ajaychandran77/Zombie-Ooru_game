@@ -537,31 +537,67 @@ auto(-4.6,4,0.5);auto(4.9,-9,-0.35);auto(-7.8,-22,1.1);
 
 /* ---------- audio ---------- */
 var AC=null,master=null,noiseBuf=null,muted=false;
-
 /* ===== CUSTOM SOUND FILES (put these files next to index.html) ===== */
 var SOUND_FILES={
-  gun:'gunshot.mp3',            // when you shoot
-  groan:'Zombie.mp3',           // zombie groan while walking near you
-  attack:'Zombie2.mp3'    // zombie hits you
+  gun:'gunshot.mp3',            // fired when you shoot
+  groan:'zombie.mp3',           // zombie groan while walking near you
+  attack:'zombie_attack.mp3',   // zombie hits you
+  music:'BG-music.mp3'           // background music (loops)
 };
-var SND={};
+var MUSIC_VOL=0.35;               // 0 to 1, lower it if the music is too loud
+var SND={},FALL={},SND_ST={};
 function loadSnd(name,file){
+  SND_ST[name]='loading';
+  function fallback(why){
+    SND_ST[name]='fallback ('+why+')';
+    try{var a=new Audio(file);a.preload='auto';FALL[name]=a;}catch(e){}
+  }
   try{
-    fetch(file).then(function(r){if(!r.ok)throw new Error('missing');return r.arrayBuffer();})
-      .then(function(buf){AC.decodeAudioData(buf,function(b){SND[name]=b;},function(){});})
-      .catch(function(){});
-  }catch(e){}
+    fetch(file).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.arrayBuffer();})
+      .then(function(buf){
+        AC.decodeAudioData(buf,function(b){SND[name]=b;SND_ST[name]='ok';if(name==='music')startMusic();},function(){fallback('decode failed');});
+      })
+      .catch(function(e){fallback(e&&e.message||'fetch failed');});
+  }catch(e){fallback('error');}
 }
 function playSnd(name,vol,rate){
-  if(!AC||!SND[name])return false;
-  var src=AC.createBufferSource();src.buffer=SND[name];
-  if(rate)src.playbackRate.value=rate;
-  var g=AC.createGain();g.gain.value=vol;
-  src.connect(g);g.connect(master);src.start();
-  return true;
+  if(!AC)return false;
+  if(SND[name]){
+    var src=AC.createBufferSource();src.buffer=SND[name];
+    if(rate)src.playbackRate.value=rate;
+    var g=AC.createGain();g.gain.value=vol;
+    src.connect(g);g.connect(master);src.start();
+    return true;
+  }
+  if(FALL[name]){
+    if(muted)return true;
+    try{var a=FALL[name].cloneNode();a.volume=Math.min(1,vol);var pr=a.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}
+    return true;
+  }
+  return false;
+}
+var musicGain=null,musicOn=false;
+function startMusic(){
+  if(musicOn||!AC||!SND.music)return;musicOn=true;
+  musicGain=AC.createGain();musicGain.gain.value=MUSIC_VOL;musicGain.connect(master);
+  var src=AC.createBufferSource();src.buffer=SND.music;src.loop=true;src.connect(musicGain);src.start();
+}
+document.addEventListener('visibilitychange',function(){
+  if(!AC)return;
+  try{if(document.hidden)AC.suspend();else AC.resume();}catch(e){}
+});
+/* open your-site/?snd on the phone to see which sound files loaded */
+if(/[?&]snd/.test(location.search)){
+  var dbg=document.createElement('div');
+  dbg.style.cssText='position:fixed;left:8px;top:60px;z-index:99;background:rgba(0,0,0,.8);color:#7CFC00;font:12px monospace;padding:6px 8px;pointer-events:none;white-space:pre';
+  document.body.appendChild(dbg);
+  setInterval(function(){
+    var t='AUDIO '+(AC?AC.state:'not started (tap START)')+'\n';
+    for(var k in SOUND_FILES)t+=k+' ('+SOUND_FILES[k]+'): '+(SND_ST[k]||'-')+'\n';
+    dbg.textContent=t;
+  },500);
 }
 /* ================================================================== */
-
 function audioInit(){
   if(AC){if(AC.state==='suspended'){try{AC.resume();}catch(e){}}return;}
   try{
@@ -569,11 +605,7 @@ function audioInit(){
     master=AC.createGain();master.gain.value=muted?0:0.55;master.connect(AC.destination);
     var len=AC.sampleRate;noiseBuf=AC.createBuffer(1,len,AC.sampleRate);
     var dd=noiseBuf.getChannelData(0);for(var i=0;i<len;i++)dd[i]=Math.random()*2-1;
-    // quiet crickets
-    var o=AC.createOscillator();o.frequency.value=4300;var g=AC.createGain();g.gain.value=0.004;
-    var l=AC.createOscillator();l.type='square';l.frequency.value=13;var lg=AC.createGain();lg.gain.value=0.004;
-    l.connect(lg);lg.connect(g.gain);o.connect(g);g.connect(master);o.start();l.start();
-    for(var k in SOUND_FILES)loadSnd(k,SOUND_FILES[k]);   // <-- loads your audio files
+    for(var k in SOUND_FILES)loadSnd(k,SOUND_FILES[k]);
   }catch(e){AC=null;}
 }
 function sfxNoise(dur,ft,f0,gain,f1){
@@ -588,37 +620,29 @@ function sfxTone(freq,dur,type,gain,end,delay){
   var g=AC.createGain();g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.02);
 }
-
-/* gun: your file, falls back to the old synth sound if the file is missing */
 function sfxShoot(){if(playSnd('gun',1))return;sfxNoise(0.2,'lowpass',3800,0.95,260);sfxTone(190,0.13,'sine',0.7,48);}
-
 function sfxHit(head){sfxNoise(0.09,'bandpass',520,0.5);sfxTone(120,0.09,'square',0.14,60);if(head)sfxTone(900,0.07,'triangle',0.22,1600);}
-
-/* zombie groan: your file, one at a time, quieter when far away */
 var groanUntil=0;
 function sfxGroan(v){
-  if(SND.groan){
-    if(!AC||AC.currentTime<groanUntil)return;
-    groanUntil=AC.currentTime+SND.groan.duration*0.8;
-    playSnd('groan',Math.max(0.05,Math.min(1,0.9*v)),0.9+Math.random()*0.2);
+  if(SND.groan||FALL.groan){
+    if(!AC||AC.currentTime<groanUntil)return;            // one groan at a time
+    groanUntil=AC.currentTime+(SND.groan?SND.groan.duration:3)*0.8;
+    playSnd('groan',Math.min(1.5,0.6+0.9*v),0.95+Math.random()*0.2);
     return;
   }
-  sfxTone(96+Math.random()*30,0.95,'sawtooth',0.1*v,52);sfxTone(48,0.9,'square',0.06*v,40,0.05);
-}
-
-/* zombie attack: your second zombie file */
+  sfxTone(96+Math.random()*30,0.95,'sawtooth',0.1*v,52);sfxTone(48,0.9,'square',0.06*v,40,0.05);}
 var atkLast=0;
 function sfxZombieAttack(){
-  var now=Date.now();if(now-atkLast<400)return;atkLast=now;
+  var now=Date.now();if(now-atkLast<400)return;atkLast=now;   // no spam when several zombies hit
   playSnd('attack',0.9,0.95+Math.random()*0.1);
 }
-
 function sfxHurt(){sfxNoise(0.25,'lowpass',900,0.7,120);sfxTone(95,0.25,'sine',0.7,40);}
 function sfxDie(){sfxTone(220,0.45,'sawtooth',0.14,45);sfxNoise(0.3,'lowpass',500,0.4,90);}
 function sfxReload(){sfxTone(900,0.04,'square',0.1);sfxTone(600,0.05,'square',0.1,null,0.55);sfxTone(1100,0.05,'square',0.12,null,1.05);}
 function sfxPickup(){sfxTone(660,0.12,'triangle',0.25);sfxTone(880,0.12,'triangle',0.25,null,0.09);sfxTone(1320,0.2,'triangle',0.25,null,0.18);}
 function sfxBell(){[520,1310,2210,3000].forEach(function(f,i){sfxTone(f,2.2/(1+i*0.5),'sine',0.22/(1+i),f*0.995);});}
 function sfxEmpty(){sfxTone(1300,0.04,'square',0.1);}
+
 /* ---------- weapon ---------- */
 var gun=new THREE.Group();
 (function(){
@@ -793,6 +817,7 @@ function hitMark(head){el.hm.classList.add('on');el.hm.classList.toggle('head',!
 /* ---------- modes ---------- */
 function setMode(m){
   S.mode=m;
+  if(musicGain)musicGain.gain.value=(m==='play'?MUSIC_VOL:MUSIC_VOL*0.4);
   el.screen.hidden=(m==='play');
   el.screen.dataset.state=(m==='menu'||m==='pause'||m==='over')?m:el.screen.dataset.state;
   el.hud.hidden=(m==='menu');
@@ -894,7 +919,7 @@ function killZombie(z,head){
   }
 }
 function hurt(dmg){
-  S.hp-=dmg;P.shake=Math.max(P.shake,0.9);P.hurt=0.75;sfxHurt();
+  S.hp-=dmg;P.shake=Math.max(P.shake,0.9);P.hurt=0.75;sfxHurt();sfxZombieAttack();
   if(S.hp<=0){S.hp=0;gameOver();}
 }
 
@@ -968,7 +993,7 @@ function update(dt){
     z.atkCd-=dt;
     if(d<range+0.1&&z.atkCd<=0){z.atkCd=z.cfg.rate;z.lunge=0.3;hurt(z.cfg.dmg);if(S.mode!=='play')return;}
     z.groanT-=dt;
-    if(z.groanT<=0){z.groanT=4+Math.random()*7;if(d<45)sfxGroan(1-d/45);}
+    if(z.groanT<=0){z.groanT=4+Math.random()*7;if(d<60)sfxGroan(1-d/60);}
   }
   // pickups
   for(var k=pickups.length-1;k>=0;k--){
