@@ -537,6 +537,31 @@ auto(-4.6,4,0.5);auto(4.9,-9,-0.35);auto(-7.8,-22,1.1);
 
 /* ---------- audio ---------- */
 var AC=null,master=null,noiseBuf=null,muted=false;
+
+/* ===== CUSTOM SOUND FILES (put these files next to index.html) ===== */
+var SOUND_FILES={
+  gun:'gunshot.mp3',            // when you shoot
+  groan:'zombie.mp3',           // zombie groan while walking near you
+  attack:'zombie_attack.mp3'    // zombie hits you
+};
+var SND={};
+function loadSnd(name,file){
+  try{
+    fetch(file).then(function(r){if(!r.ok)throw new Error('missing');return r.arrayBuffer();})
+      .then(function(buf){AC.decodeAudioData(buf,function(b){SND[name]=b;},function(){});})
+      .catch(function(){});
+  }catch(e){}
+}
+function playSnd(name,vol,rate){
+  if(!AC||!SND[name])return false;
+  var src=AC.createBufferSource();src.buffer=SND[name];
+  if(rate)src.playbackRate.value=rate;
+  var g=AC.createGain();g.gain.value=vol;
+  src.connect(g);g.connect(master);src.start();
+  return true;
+}
+/* ================================================================== */
+
 function audioInit(){
   if(AC){if(AC.state==='suspended'){try{AC.resume();}catch(e){}}return;}
   try{
@@ -548,6 +573,7 @@ function audioInit(){
     var o=AC.createOscillator();o.frequency.value=4300;var g=AC.createGain();g.gain.value=0.004;
     var l=AC.createOscillator();l.type='square';l.frequency.value=13;var lg=AC.createGain();lg.gain.value=0.004;
     l.connect(lg);lg.connect(g.gain);o.connect(g);g.connect(master);o.start();l.start();
+    for(var k in SOUND_FILES)loadSnd(k,SOUND_FILES[k]);   // <-- loads your audio files
   }catch(e){AC=null;}
 }
 function sfxNoise(dur,ft,f0,gain,f1){
@@ -562,16 +588,37 @@ function sfxTone(freq,dur,type,gain,end,delay){
   var g=AC.createGain();g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.02);
 }
-function sfxShoot(){sfxNoise(0.2,'lowpass',3800,0.95,260);sfxTone(190,0.13,'sine',0.7,48);}
+
+/* gun: your file, falls back to the old synth sound if the file is missing */
+function sfxShoot(){if(playSnd('gun',1))return;sfxNoise(0.2,'lowpass',3800,0.95,260);sfxTone(190,0.13,'sine',0.7,48);}
+
 function sfxHit(head){sfxNoise(0.09,'bandpass',520,0.5);sfxTone(120,0.09,'square',0.14,60);if(head)sfxTone(900,0.07,'triangle',0.22,1600);}
-function sfxGroan(v){sfxTone(96+Math.random()*30,0.95,'sawtooth',0.1*v,52);sfxTone(48,0.9,'square',0.06*v,40,0.05);}
+
+/* zombie groan: your file, one at a time, quieter when far away */
+var groanUntil=0;
+function sfxGroan(v){
+  if(SND.groan){
+    if(!AC||AC.currentTime<groanUntil)return;
+    groanUntil=AC.currentTime+SND.groan.duration*0.8;
+    playSnd('groan',Math.max(0.05,Math.min(1,0.9*v)),0.9+Math.random()*0.2);
+    return;
+  }
+  sfxTone(96+Math.random()*30,0.95,'sawtooth',0.1*v,52);sfxTone(48,0.9,'square',0.06*v,40,0.05);
+}
+
+/* zombie attack: your second zombie file */
+var atkLast=0;
+function sfxZombieAttack(){
+  var now=Date.now();if(now-atkLast<400)return;atkLast=now;
+  playSnd('attack',0.9,0.95+Math.random()*0.1);
+}
+
 function sfxHurt(){sfxNoise(0.25,'lowpass',900,0.7,120);sfxTone(95,0.25,'sine',0.7,40);}
 function sfxDie(){sfxTone(220,0.45,'sawtooth',0.14,45);sfxNoise(0.3,'lowpass',500,0.4,90);}
 function sfxReload(){sfxTone(900,0.04,'square',0.1);sfxTone(600,0.05,'square',0.1,null,0.55);sfxTone(1100,0.05,'square',0.12,null,1.05);}
 function sfxPickup(){sfxTone(660,0.12,'triangle',0.25);sfxTone(880,0.12,'triangle',0.25,null,0.09);sfxTone(1320,0.2,'triangle',0.25,null,0.18);}
 function sfxBell(){[520,1310,2210,3000].forEach(function(f,i){sfxTone(f,2.2/(1+i*0.5),'sine',0.22/(1+i),f*0.995);});}
 function sfxEmpty(){sfxTone(1300,0.04,'square',0.1);}
-
 /* ---------- weapon ---------- */
 var gun=new THREE.Group();
 (function(){
