@@ -208,7 +208,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
     </div>
   </div>
 </div>
-<div class="hint" id="hint">WASD move · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · 1-3/Q weapons · G grenade · E talk · O settings</div>
+<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · 1-3/Q weapons · G grenade · E talk / gate / van · O settings</div>
 
 <div class="tc" id="tc" hidden>
   <div id="lookZone"></div>
@@ -260,7 +260,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
     <h1 class="s-pause"><span class="en">Paused</span><span class="ta">இடைவேளை</span></h1>
     <h1 class="s-over"><span class="en" id="overEn">The village fell</span><span class="ta" id="overTa">ஊர் வீழ்ந்தது</span></h1>
 
-    <p class="lead s-menu">The dead have walked out of the paddy fields and into Sengattupatti. The tea kadai is dark, the lamps are swinging, and only the old gopuram is still standing. The temple courtyard is your camp, with survivors, a store and a safe place to heal. Hold the village with your thuppaki until the roosters call.</p>
+    <p class="lead s-menu">The dead have walked out of the paddy fields and into Sengattupatti. The tea kadai is dark, the lamps are swinging, and only the old gopuram is still standing. The temple courtyard is your camp, with survivors, a store and a safe place to heal. Work the gate lever with E: an open gate lets you drive the village van out, but it lets the dead walk in too. If any villager dies, the village falls.</p>
     <p class="lead s-pause">Take a breath. The village is still standing.</p>
 
     <dl class="stats s-over">
@@ -272,12 +272,13 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
     <div class="newbest s-over" id="newBest" hidden>புதிய சாதனை! New best score.</div>
 
     <dl class="keys desk-only s-menu s-pause">
-      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move. Hold <kbd>Shift</kbd> to sprint.</dd>
+      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move. Hold <kbd>Shift</kbd> to sprint. Also drives the van.</dd>
       <dt><kbd>Mouse</kbd></dt><dd>Aim. Click to fire. Headshots hit three times harder.</dd>
+      <dt><kbd>E</kbd></dt><dd>Talk, work the gate lever, climb the tower, drive or leave the van.</dd>
       <dt><kbd>R</kbd></dt><dd>Reload. <kbd>Esc</kbd> pauses, <kbd>M</kbd> mutes.</dd>
     </dl>
     <dl class="keys touch-only s-menu s-pause">
-      <dt>Left thumb</dt><dd>Drag anywhere on the left to move.</dd>
+      <dt>Left thumb</dt><dd>Drag anywhere on the left to move (or drive).</dd>
       <dt>Right thumb</dt><dd>Drag to aim. Hold the red button to fire.</dd>
     </dl>
 
@@ -307,9 +308,9 @@ if(!window.THREE){$('menuErr').hidden=false;return;}
 /* ---------- state ---------- */
 var RELOAD_T=1.3, WB=88, EYE=1.7;
 var S={mode:'menu',wave:0,score:0,kills:0,hp:100,maxHp:100,mag:12,magSize:12,reserve:60,reload:0,fireCd:0,
-  combo:0,comboT:0,toSpawn:0,spawnT:0,spawnGap:1,maxAlive:14,waveGap:0,forceBrutes:0,best:0,time:0,day:0};
+  combo:0,comboT:0,toSpawn:0,spawnT:0,spawnGap:1,maxAlive:14,waveGap:0,forceBrutes:0,best:0,time:0,day:0,zin:false};
 try{S.best=+localStorage.getItem('zombieOoruBest')||0;}catch(e){}
-var P={x:0,z:24,yaw:0,pitch:0,bob:0,shake:0,kick:0,hurt:0};
+var P={x:0,z:24,yaw:0,pitch:0,bob:0,shake:0,kick:0,hurt:0,lookT:-9};
 var CFG={music:60,sfx:100,sens:100,diff:1,track:'auto'};
 try{Object.assign(CFG,JSON.parse(localStorage.getItem('zombieOoruCfg')||'{}'));}catch(e){}
 var DF=[{hp:.7,sp:.85,dm:.7},{hp:1,sp:1,dm:1},{hp:1.4,sp:1.2,dm:1.4}];
@@ -419,7 +420,7 @@ function makeSign(w,h,bg,fg,l1,l2,f1,f2){
 
 /* ---------- world ---------- */
 var COL=[];
-function addCol(x,z,r,h){COL.push({x:x,z:z,r:r,h:h||3});}
+function addCol(x,z,r,h){var c={x:x,z:z,r:r,h:h||3};COL.push(c);return c;}
 
 var ground=new THREE.Mesh(new THREE.PlaneGeometry(700,700),new THREE.MeshLambertMaterial({map:earthTex}));
 ground.rotation.x=-Math.PI/2;scene.add(ground);
@@ -950,7 +951,7 @@ function tag(m,z,head){m.userData.z=z;m.userData.head=!!head;return m;}
 function makeZombie(type){
   var cfg=TYPES[type],root=new THREE.Group();
   var z={type:type,cfg:cfg,root:root,hp:Math.max(1,Math.round(cfg.hp*DF[CFG.diff].hp)),speed:cfg.speed*DF[CFG.diff].sp*(0.85+Math.random()*0.3),phase:Math.random()*6.28,
-    atkCd:0.4,stagger:0,lunge:0,dead:false,deadT:0,x:0,z:0,groanT:2+Math.random()*6,lean:cfg.lean,idle:false,parts:{}};
+    atkCd:0.4,stagger:0,lunge:0,dead:false,deadT:0,x:0,z:0,groanT:2+Math.random()*6,lean:cfg.lean,idle:false,vh:0,parts:{}};
   root.scale.setScalar(cfg.scale*(0.96+Math.random()*0.1));
   var skin=skinM[type],shirt=shirts[(Math.random()*shirts.length)|0];
   function mk(geo,mat,x,y,z2,par,head){var m=new THREE.Mesh(geo,mat);m.position.set(x,y,z2);par.add(m);return tag(m,z,head);}
@@ -1037,7 +1038,9 @@ function setH(k,node,v){if(cache[k]!==v){cache[k]=v;node.innerHTML=v;}}
 function hudUpdate(){
   setT('wave',el.wave,String(Math.max(S.wave,1)));
   var left=Z.length+S.toSpawn;
-  setT('left',el.left,(S.waveGap>0?((S.wave>0?'Next wave in ':'Get ready ')+Math.ceil(S.waveGap)+'s'):(left+' left'))+(inTemple(P.x,P.z)?' \u00B7 safe camp':''));
+  var campTxt=inTemple(P.x,P.z)?(S.zin?' \u00B7 ZOMBIES IN CAMP':' \u00B7 safe camp'):'';
+  var gateTxt=gateOpen>0.5?' \u00B7 gate OPEN':'';
+  setT('left',el.left,(S.waveGap>0?((S.wave>0?'Next wave in ':'Get ready ')+Math.ceil(S.waveGap)+'s'):(left+' left'))+campTxt+gateTxt);
   setT('score',el.score,String(S.score));
   setT('combo',el.combo,S.combo>=3?('Combo x'+(1+Math.min(4,Math.floor(S.combo/3)))):('Best '+S.best));
   var hp=Math.max(0,Math.round(S.hp));
@@ -1079,14 +1082,14 @@ function hitMark(head){el.hm.classList.add('on');el.hm.classList.toggle('head',!
 /* ---------- modes ---------- */
 function setMode(m){
   S.mode=m;
-  applyVol();if(m!=='play'){S.shop=false;$('shop').hidden=true;$('talk').hidden=true;$('say').hidden=true;nearPrev=false;}
+  applyVol();if(m!=='play'){S.shop=false;$('shop').hidden=true;$('talk').hidden=true;$('say').hidden=true;nearPrev=false;engine(false,0);}
   el.screen.hidden=(m==='play');
   el.screen.dataset.state=(m==='menu'||m==='pause'||m==='over')?m:el.screen.dataset.state;
   el.hud.hidden=(m==='menu');
   el.xh.hidden=(m!=='play');
   el.hint.hidden=(m!=='play');
   el.tc.hidden=!(isTouch&&m==='play');
-  gun.visible=(m!=='menu');
+  gun.visible=(m!=='menu'&&!VAN.drive);
 }
 function lockPointer(){
   if(isTouch)return;
@@ -1101,8 +1104,8 @@ document.addEventListener('pointerlockerror',function(){if(!everLocked)dragLook=
 function resetGame(){
   clearZombies();clearPickups();
   S.wave=0;S.score=0;S.kills=0;S.hp=S.maxHp;S.mag=S.magSize;S.reserve=60;S.wpn=0;S.own=[true,false,false];S.mags=[12,0,0];S.magSize=12;S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;S.reload=0;S.fireCd=0;S.combo=0;S.comboT=0;
-  S.toSpawn=0;S.waveGap=2.6;S.time=0;S.forceBrutes=0;
-  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;towerReset();
+  S.toSpawn=0;S.waveGap=2.6;S.time=0;S.forceBrutes=0;S.zin=false;
+  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;towerReset();campReset();
   Object.keys(cache).forEach(function(k){delete cache[k];});
 }
 function startGame(){
@@ -1110,14 +1113,15 @@ function startGame(){
   if(isTouch&&fsSupported()&&!isFS())enterFS();
   keys={};firing=false;
   if(!isTouch){lockPointer();setTimeout(function(){if(S.mode==='play'&&!document.pointerLockElement&&!everLocked)dragLook=true;},500);}
-  announce('ஊர் காப்போம்','Hold the temple · press E near survivors',2800);
+  announce('ஊர் காப்போம்','Hold the temple · E at the gate lever opens the gate',2800);
 }
 function pause(){if(S.mode!=='play')return;keys={};firing=false;setMode('pause');}
 function resume(){audioInit();setMode('play');keys={};firing=false;lockPointer();}
-function gameOver(){
+function gameOver(en,ta){
   if(document.pointerLockElement)try{document.exitPointerLock();}catch(e){}
   sfxDie();
   var nb=S.score>S.best;if(nb){S.best=S.score;try{localStorage.setItem('zombieOoruBest',String(S.best));}catch(e){}}
+  $('overEn').textContent=en||'The village fell';$('overTa').textContent=ta||'ஊர் வீழ்ந்தது';
   $('oWave').textContent=Math.max(S.wave-1,0);$('oKills').textContent=S.kills;$('oScore').textContent=S.score;$('oBest').textContent=S.best;$('newBest').hidden=!nb;
   keys={};firing=false;setMode('over');
 }
@@ -1150,7 +1154,9 @@ function shoot(){
     if(hits.length){var h=hits[0];tHit=h.distance;hz=h.object.userData.z;head=!!h.object.userData.head;hp=h.point;}
     var tWall=Infinity,dust=false;
     for(var i=0;i<COL.length;i++){
-      var c=COL[i],t=rayCircle(_o.x,_o.z,_d.x,_d.z,c.x,c.z,c.r);
+      var c=COL[i];
+      if(VAN.drive&&vanCols.indexOf(c)>=0)continue;
+      var t=rayCircle(_o.x,_o.z,_d.x,_d.z,c.x,c.z,c.r);
       if(t<tWall){var y=_o.y+_d.y*t;if(y<c.h&&y>0)tWall=t;}
     }
     if(_d.y<-0.001){var tg=-_o.y/_d.y;if(tg<tWall&&tg<tHit){tWall=tg;dust=true;}}
@@ -1185,8 +1191,15 @@ function killZombie(z,head,npc){
   if(z.type==='boss'||Math.random()<0.05){var un=[1,2].filter(function(i){return !S.own[i];});spawnPickup(un.length?'w'+un[(Math.random()*un.length)|0]:'nade',z.x+1.5,z.z);}
 }
 function hurt(dmg){
+  if(VAN.drive)dmg=Math.max(1,Math.round(dmg*0.4));   // the van is armoured
   S.hp-=dmg;P.shake=Math.max(P.shake,0.9);P.hurt=0.75;sfxHurt();sfxZombieAttack();
   if(S.hp<=0){S.hp=0;gameOver();}
+}
+/* zombies attacking the survivors: if one dies, the village falls */
+function hurtNpc(n,dmg){
+  n.hp-=dmg;_e.set(n.x,1.2+(n.by||0),n.z);burst(_e,6,1,3);sfxZombieAttack();
+  if(n.hp<=0){n.hp=0;gameOver(n.en+' was killed',n.name+' இறந்தார்');return;}
+  if(S.time-n.alertT>1.5){n.alertT=S.time;announce('ஐயோ! '+n.name,n.en+' is under attack \u00B7 '+Math.round(n.hp/n.max*100)+'%',1300);}
 }
 
 /* ---------- waves ---------- */
@@ -1209,6 +1222,31 @@ function waveClear(){
   sfxPickup();announce('அலை முடிந்தது','Wave '+S.wave+' cleared · ammo and health restored',2600);
 }
 
+/* ---------- gate pathing for zombies ---------- */
+var WP={x:0,z:0};
+function wayp(z,tx,tz){
+  var zc=z.z<-44.5&&z.z>-77&&Math.abs(z.x)<21,zr=z.z<-33&&z.z>=-44.5&&Math.abs(z.x)<4.5;
+  var tc=tz<-44.5&&tz>-77&&Math.abs(tx)<21;
+  WP.x=tx;WP.z=tz;
+  if(tc){
+    if(zc)return;
+    if(zr){WP.x=0;WP.z=-47;return;}
+    if(z.z<-34){
+      var sg=z.x<0?-1:1;
+      if(Math.abs(z.x)<24){WP.x=sg*26;WP.z=z.z;}else{WP.x=sg*26;WP.z=-30;}
+      return;
+    }
+    if(Math.abs(z.x)>1.2){WP.x=0;WP.z=-33;}else{WP.x=0;WP.z=-47;}
+  }else{
+    if(zc){if(Math.abs(z.x)>1.2){WP.x=0;WP.z=-47;}else{WP.x=0;WP.z=-33;}return;}
+    if(zr){WP.x=0;WP.z=-31;}
+  }
+}
+function gateBlock(o,rad){
+  if(gateOpen>=0.75)return;
+  if(Math.abs(o.x)<2.6&&Math.abs(o.z+42)<rad+0.3){o.z=(o.z>-42)?(-42+rad+0.3):(-42-rad-0.3);}
+}
+
 /* ---------- update ---------- */
 var tmpO={x:0,z:0};
 function update(dt){
@@ -1216,21 +1254,25 @@ function update(dt){
   var inCamp=inTemple(P.x,P.z),nn=nearNpc(),nid=nn?nn.id:null;
   if(nid!==nearPrev){nearPrev=nid;$('talk').hidden=!nn;if(nn)$('talk').innerHTML='&#128172; '+nn.en+' <small>E</small>';}
   npcUpdate(dt);
-  if(inCamp&&S.hp<S.maxHp){S.hpAcc=(S.hpAcc||0)+2*dt;if(S.hpAcc>=1){S.hp=Math.min(S.maxHp,S.hp+1);S.hpAcc-=1;}}
+  if(inCamp&&!S.zin&&S.hp<S.maxHp){S.hpAcc=(S.hpAcc||0)+2*dt;if(S.hpAcc>=1){S.hp=Math.min(S.maxHp,S.hp+1);S.hpAcc-=1;}}
   if(S.nadeCd>0)S.nadeCd-=dt;
   // look (keys)
   var asn=CFG.sens/100;
-  if(keys.ArrowLeft)P.yaw+=2.2*dt*asn;if(keys.ArrowRight)P.yaw-=2.2*dt*asn;
-  if(keys.ArrowUp)P.pitch=Math.min(1.3,P.pitch+1.6*dt*asn);if(keys.ArrowDown)P.pitch=Math.max(-1.3,P.pitch-1.6*dt*asn);
+  if(keys.ArrowLeft){P.yaw+=2.2*dt*asn;P.lookT=S.time;}if(keys.ArrowRight){P.yaw-=2.2*dt*asn;P.lookT=S.time;}
+  if(keys.ArrowUp){P.pitch=Math.min(1.3,P.pitch+1.6*dt*asn);P.lookT=S.time;}if(keys.ArrowDown){P.pitch=Math.max(-1.3,P.pitch-1.6*dt*asn);P.lookT=S.time;}
   // move
   var f=(keys.KeyW?1:0)-(keys.KeyS?1:0)+stick.y,r=(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x;
   var mag=Math.hypot(f,r);if(mag>1){f/=mag;r/=mag;}
   var sprint=keys.ShiftLeft||keys.ShiftRight||Math.hypot(stick.x,stick.y)>0.95;
-  var sp=(sprint?8.2:5.2),sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
-  P.x+=(-sy*f+cy*r)*sp*dt;P.z+=(-cy*f-sy*r)*sp*dt;
-  if(!(TOWER&&TOWER.up))collide(P,0.45);
-  P.x=Math.max(-WB,Math.min(WB,P.x));P.z=Math.max(-WB,Math.min(WB,P.z));
-  towerStep(dt);var moving=mag>0.1;P.bob+=dt*(moving?(sprint?13:9):0);
+  if(!VAN.drive){
+    var sp=(sprint?8.2:5.2),sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
+    P.x+=(-sy*f+cy*r)*sp*dt;P.z+=(-cy*f-sy*r)*sp*dt;
+    if(!(TOWER&&TOWER.up)){collide(P,0.45);gateBlock(P,0.45);}
+    P.x=Math.max(-WB,Math.min(WB,P.x));P.z=Math.max(-WB,Math.min(WB,P.z));
+    towerStep(dt);
+  }
+  vanStep(dt);
+  var moving=mag>0.1&&!VAN.drive;P.bob+=dt*(moving?(sprint?13:9):0);
   // weapon
   if(S.fireCd>0)S.fireCd-=dt;
   if(S.reload>0){S.reload-=dt;if(S.reload<=0){S.reload=0;var need=S.magSize-S.mag,take=Math.min(need,S.reserve);S.mag+=take;S.reserve-=take;}}
@@ -1246,36 +1288,59 @@ function update(dt){
     }
   }else if(Z.length===0&&S.wave>0){waveClear();}
   // zombies
+  var anyIn=false,protectedP=(inCamp&&gateOpen<0.5);
   for(var i=0;i<Z.length;i++){
-    var z=Z[i],dx=P.x-z.x,dz=P.z-z.z,d=Math.hypot(dx,dz)||0.001,nx=dx/d,nz=dz/d;
+    var z=Z[i],zIn=inTemple(z.x,z.z),tNpc=null,tx=P.x,tz=P.z,dT=Math.hypot(P.x-z.x,P.z-z.z);
+    if(zIn){
+      anyIn=true;
+      var bestD=dT;
+      for(var q=0;q<NPCS.length;q++){
+        var nq=NPCS[q];if(!(nq.hp>0)||nq.by)continue;
+        var dq=Math.hypot(nq.x-z.x,nq.z-z.z);
+        if(dq<14&&dq<bestD){bestD=dq;tNpc=nq;}
+      }
+      if(tNpc){tx=tNpc.x;tz=tNpc.z;dT=bestD;}
+    }
+    var wx=tx,wz=tz;
+    if(gateOpen>0.3){wayp(z,tx,tz);wx=WP.x;wz=WP.z;}
+    var viaWp=(wx!==tx||wz!==tz);
+    var dx=wx-z.x,dz=wz-z.z,d=Math.hypot(dx,dz)||0.001,nx=dx/d,nz=dz/d;
     if(z.stagger>0)z.stagger-=dt;if(z.lunge>0)z.lunge-=dt;
-    var range=1.15+z.cfg.scale*0.35,spd=(z.stagger>0||d<range||(z.type==='spitter'&&d<24&&d>8))?0:z.speed;
+    var range=1.15+z.cfg.scale*0.35;
+    var spitting=(z.type==='spitter'&&!tNpc&&dT<24&&dT>8);
+    var spd=(z.stagger>0||(!viaWp&&dT<range)||spitting)?0:z.speed;
     var sx=0,sz=0;
     for(var j=0;j<Z.length;j++){
       if(j===i)continue;var o=Z[j],ox=z.x-o.x,oz=z.z-o.z,od=ox*ox+oz*oz;
-      if(od<1.1&&od>0.0001){var q=Math.sqrt(od);sx+=ox/q*(1.1-q);sz+=oz/q*(1.1-q);}
+      if(od<1.1&&od>0.0001){var q2=Math.sqrt(od);sx+=ox/q2*(1.1-q2);sz+=oz/q2*(1.1-q2);}
     }
     z.x+=(nx*spd+sx*2.2)*dt;z.z+=(nz*spd+sz*2.2)*dt;
-    if(z.x>TEMPLE.x0&&z.x<TEMPLE.x1&&z.z<TEMPLE.z1&&z.z>TEMPLE.z0)z.z=TEMPLE.z1;
     tmpO.x=z.x;tmpO.z=z.z;
     if(collide(tmpO,0.4*z.cfg.scale)){
-      var tx=-tmpO._nz,tz=tmpO._nx;if(tx*nx+tz*nz<0){tx=-tx;tz=-tz;}
-      tmpO.x+=tx*Math.max(spd,1.5)*dt*1.4;tmpO.z+=tz*Math.max(spd,1.5)*dt*1.4;
+      var ttx=-tmpO._nz,ttz=tmpO._nx;if(ttx*nx+ttz*nz<0){ttx=-ttx;ttz=-ttz;}
+      tmpO.x+=ttx*Math.max(spd,1.5)*dt*1.4;tmpO.z+=ttz*Math.max(spd,1.5)*dt*1.4;
     }
+    gateBlock(tmpO,0.4*z.cfg.scale);
     z.x=tmpO.x;z.z=tmpO.z;
     z.root.position.x=z.x;z.root.position.z=z.z;z.root.rotation.y=Math.atan2(dx,dz);
     animZ(z,dt,spd>0);
     z.atkCd-=dt;
-    if(z.type==='spitter'&&d<24&&d>8&&z.atkCd<=0&&!inCamp){z.atkCd=z.cfg.rate;z.lunge=0.3;_e.set(z.x,1.5,z.z);burst(_e,6,0,2.5);hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
-    if(d<range+0.1&&z.atkCd<=0&&!inCamp){z.atkCd=z.cfg.rate;z.lunge=0.3;hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
+    if(tNpc){
+      if(dT<range+0.2&&z.atkCd<=0){z.atkCd=z.cfg.rate;z.lunge=0.3;hurtNpc(tNpc,Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
+    }else{
+      if(z.type==='spitter'&&dT<24&&dT>8&&z.atkCd<=0&&!(protectedP&&!zIn)){z.atkCd=z.cfg.rate;z.lunge=0.3;_e.set(z.x,1.5,z.z);burst(_e,6,0,2.5);hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
+      if(dT<range+0.1&&z.atkCd<=0&&!(protectedP&&!zIn)&&!(P.y>3)){z.atkCd=z.cfg.rate;z.lunge=0.3;hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
+    }
     z.groanT-=dt;
-    if(z.groanT<=0){z.groanT=4+Math.random()*7;if(d<60)sfxGroan(1-d/60);}
+    if(z.groanT<=0){z.groanT=4+Math.random()*7;if(dT<60)sfxGroan(1-dT/60);}
   }
+  S.zin=anyIn;
   // pickups
+  var pr2=VAN.drive?12:2.6;
   for(var k=pickups.length-1;k>=0;k--){
     var pk=pickups[k];pk.t+=dt;pk.life-=dt;pk.g.rotation.y+=dt*2;pk.g.position.y=0.75+Math.sin(pk.t*3)*0.12;
     var pdx=P.x-pk.x,pdz=P.z-pk.z;
-    if(pdx*pdx+pdz*pdz<2.6){
+    if(pdx*pdx+pdz*pdz<pr2){
       if(pk.kind==='nade'){S.nades++;announce('குண்டு','+1 grenade',900);}
       else if(pk.kind[0]==='w'){var wi=+pk.kind[1];if(!S.own[wi]){S.own[wi]=true;S.mags[wi]=W[wi].mag;}switchWpn(wi);}
       else if(pk.kind==='ammo'){S.reserve+=24;announce('குண்டுகள்','+24 ammo',900);}
@@ -1314,6 +1379,13 @@ function updateFx(dt){
 }
 function updateCamera(){
   var sh=P.shake*0.03;
+  if(VAN.drive){
+    // chase camera orbiting the van
+    var pc=Math.cos(P.pitch),dist=9,lx=-Math.sin(P.yaw)*pc,ly=Math.sin(P.pitch),lz=-Math.cos(P.yaw)*pc;
+    camera.position.set(VAN.x-lx*dist,Math.max(1.2,2.6-ly*dist),VAN.z-lz*dist);
+    camera.rotation.set(P.pitch+(Math.random()-0.5)*sh,P.yaw+(Math.random()-0.5)*sh,0,'YXZ');
+    return;
+  }
   camera.position.set(P.x,EYE+(P.y||0)+Math.sin(P.bob)*0.045,P.z);
   camera.rotation.set(P.pitch+(Math.random()-0.5)*sh,P.yaw+(Math.random()-0.5)*sh,0,'YXZ');
 }
@@ -1398,8 +1470,8 @@ window.addEventListener('mouseup',function(){
 });
 window.addEventListener('mousemove',function(e){
   if(S.mode!=='play'||isTouch)return;
-  if(document.pointerLockElement){P.yaw-=e.movementX*0.0022*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-e.movementY*0.0022*(CFG.sens/100)));}
-  else if(dragLook&&mouseDown){dragMoved+=Math.abs(e.movementX)+Math.abs(e.movementY);P.yaw-=e.movementX*0.0032*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-e.movementY*0.0032*(CFG.sens/100)));}
+  if(document.pointerLockElement){P.lookT=S.time;P.yaw-=e.movementX*0.0022*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-e.movementY*0.0022*(CFG.sens/100)));}
+  else if(dragLook&&mouseDown){P.lookT=S.time;dragMoved+=Math.abs(e.movementX)+Math.abs(e.movementY);P.yaw-=e.movementX*0.0032*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-e.movementY*0.0032*(CFG.sens/100)));}
 });
 canvas.addEventListener('contextmenu',function(e){e.preventDefault();});
 
@@ -1409,6 +1481,7 @@ canvas.addEventListener('contextmenu',function(e){e.preventDefault();});
   look.addEventListener('pointerdown',function(e){lId=e.pointerId;lx=e.clientX;ly=e.clientY;try{look.setPointerCapture(e.pointerId);}catch(x){}audioInit();});
   look.addEventListener('pointermove',function(e){
     if(e.pointerId!==lId)return;
+    P.lookT=S.time;
     P.yaw-=(e.clientX-lx)*0.0055*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-(e.clientY-ly)*0.0055*(CFG.sens/100)));lx=e.clientX;ly=e.clientY;
   });
   function lend(e){if(e.pointerId===lId)lId=null;}
@@ -1496,15 +1569,17 @@ function makeHuman(o){
   return g;
 }
 function addNpc(o){
-  var root=makeHuman(o);root.position.set(o.x,0,o.z);root.rotation.y=o.face||0;
+  var by=o.y||0,root=makeHuman(o);root.position.set(o.x,by,o.z);root.rotation.y=o.face||0;
   if(o.scale)root.scale.setScalar(o.scale);
   scene.add(root);
-  var n={id:o.id,name:o.name,en:o.en,x:o.x,z:o.z,root:root,base:o.face||0,noLook:!!o.noLook,talkable:!!o.talkable,mark:null,markY:0,talk:null,aim:null,cd:0};
+  var n={id:o.id,name:o.name,en:o.en,x:o.x,z:o.z,by:by,root:root,base:o.face||0,noLook:!!o.noLook,talkable:!!o.talkable,mark:null,markY:0,talk:null,aim:null,cd:0,
+    hp:o.hp||60,max:o.hp||60,alertT:-9};
   if(n.talkable){
     var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.16),bas(0xf2b01e));
-    n.markY=(o.sit?1.55:2.35)*(o.scale||1)+0.2;mk.position.set(o.x,n.markY,o.z);scene.add(mk);n.mark=mk;
+    n.markY=(o.sit?1.55:2.35)*(o.scale||1)+0.2+by;mk.position.set(o.x,n.markY,o.z);scene.add(mk);n.mark=mk;
   }
-  addCol(o.x,o.z,0.5,2);NPCS.push(n);return n;
+  if(!by)addCol(o.x,o.z,0.5,2);
+  NPCS.push(n);return n;
 }
 function speak(name,line){
   $('sayName').textContent=name;$('sayLine').textContent=line;$('say').hidden=false;
@@ -1512,15 +1587,21 @@ function speak(name,line){
 }
 function pick(a){return a[(Math.random()*a.length)|0];}
 function nearNpc(){
+  if(VAN.drive)return vanNpc;
   var best=null,bd=3.9;
-  for(var i=0;i<NPCS.length;i++){var n=NPCS[i];if(!n.talkable)continue;var d=Math.hypot(P.x-n.x,P.z-n.z);if(d<bd){bd=d;best=n;}}
+  for(var i=0;i<NPCS.length;i++){
+    var n=NPCS[i];if(!n.talkable)continue;
+    if(n.id!=='tower'&&Math.abs(P.y-(n.by||0))>3)continue;
+    var d=Math.hypot(P.x-n.x,P.z-n.z);if(d<bd){bd=d;best=n;}
+  }
   return best;
 }
 var annachi=addNpc({id:'shop',name:'அண்ணாச்சி',en:'Annachi',x:-14.5,z:-54,face:Math.PI/2,shirt:0xf4ecd8,lower:0xf4ecd8,skin:0xa56f4a,towel:true,stache:true,talkable:true});
 var vaidyar=addNpc({id:'healer',name:'வைத்தியர்',en:'Vaidyar',x:12.6,z:-57.2,face:-1.0,sit:true,shirt:0xe9e1c8,lower:0xf0e8d0,skin:0x9a6a46,hair:0xdcdcdc,towel:true,stache:true,talkable:true});
 var amma=addNpc({id:'amma',name:'அம்மா',en:'Amma',x:9.2,z:-58.2,face:0.69,sit:true,dress:true,shirt:0xd9a441,lower:0x9a2f4a,pallu:0x9a2f4a,skin:0xa8714c,bun:true,talkable:true});
-guard=addNpc({id:'guard',name:'காவலர் முத்து',en:'Guard Muthu',x:3.6,z:-47.2,face:0,shirt:0x8a7a3a,lower:0x3a4660,skin:0x9a6844,cap:0x3a2a14,stache:true,gun:true,noLook:true,talkable:true});
-var kutty=addNpc({id:'kutty',name:'குட்டி',en:'Kutty',x:7,z:-64,face:3.1,shirt:0xd9382a,lower:0x2f3a6a,skin:0xb07a56,scale:0.65,talkable:true});
+/* Guard Muthu now stands guard on top of the watchtower (platform height 8.1) */
+guard=addNpc({id:'guard',name:'காவலர் முத்து',en:'Guard Muthu',x:-16.4,z:-44.9,y:8.1,face:0,shirt:0x8a7a3a,lower:0x3a4660,skin:0x9a6844,cap:0x3a2a14,stache:true,gun:true,noLook:true,talkable:true});
+var kutty=addNpc({id:'kutty',name:'குட்டி',en:'Kutty',x:7,z:-64,face:3.1,shirt:0xd9382a,lower:0x2f3a6a,skin:0xb07a56,scale:0.65,talkable:true,hp:40});
 
 vaidyar.talk=function(){
   if(S.healWave===S.wave&&S.hp<S.maxHp){speak('வைத்தியர் · Vaidyar','No more kashayam this wave, thambi. Come back after the next one.');return;}
@@ -1528,8 +1609,8 @@ vaidyar.talk=function(){
   S.healWave=S.wave;S.hp=Math.min(S.maxHp,S.hp+50);sfxPickup();
   speak('வைத்தியர் · Vaidyar','Drink this kashayam. +50 health. Now go and protect the village.');
 };
-guard.talk=function(){speak('காவலர் முத்து · Guard Muthu',pick(['I cover the gate with my old gun. You take the road.','Aim for the head, thambi. It hits three times harder.','The Kaalai is slow but strong. Keep moving and keep shooting.']));};
-amma.talk=function(){speak('அம்மா · Amma',pick(['Rest by the fire, kanna. The temple walls keep them out.','The kolam at the shrine is still fresh. Nothing bad crosses it.','Annachi sells good guns. Spend what you earn.']));};
+guard.talk=function(){speak('காவலர் முத்து · Guard Muthu',pick(['I watch from the tower with my old gun. Keep the gate shut when the dead come close.','Aim for the head, thambi. It hits three times harder.','If they get in, they go for the villagers. Do not let anyone die.']));};
+amma.talk=function(){speak('அம்மா · Amma',pick(['Rest by the fire, kanna. Keep the gate closed and the walls keep them out.','The kolam at the shrine is still fresh. Nothing bad crosses it.','Annachi sells good guns. Spend what you earn.']));};
 kutty.talk=function(){speak('குட்டி · Kutty',pick(['The big one has horns like a jallikattu bull!','I counted the stars. The roosters will call soon.','Annachi sells grenades. Boom!']));};
 
 function npcUpdate(dt){
@@ -1539,19 +1620,19 @@ function npcUpdate(dt){
     if(n===guard&&n.aim!==null)target=n.aim;else if(d<9&&!n.noLook)target=Math.atan2(dx,dz);
     var diff=Math.atan2(Math.sin(target-n.root.rotation.y),Math.cos(target-n.root.rotation.y));
     n.root.rotation.y+=diff*Math.min(1,dt*4);
-    n.root.position.y=Math.sin(t*1.6+i)*0.012;
+    n.root.position.y=(n.by||0)+Math.sin(t*1.6+i)*0.012;
     if(n.mark){n.mark.rotation.y+=dt*2;n.mark.position.y=n.markY+Math.sin(t*3+i)*0.07;}
   }
-  /* Guard Muthu covers the gate with his old gun */
+  /* Guard Muthu covers the camp from the watchtower with his old gun */
   guard.cd-=dt;guard.aim=null;
-  var tz=null,bd=22;
+  var tz=null,bd=30;
   for(i=0;i<Z.length;i++){var zz=Z[i],zd=Math.hypot(zz.x-guard.x,zz.z-guard.z);if(zd<bd){bd=zd;tz=zz;}}
   if(tz){
     guard.aim=Math.atan2(tz.x-guard.x,tz.z-guard.z);
     if(guard.cd<=0){
-      guard.cd=1.1;tz.hp-=1;tz.stagger=0.12;
+      guard.cd=1.0;tz.hp-=1.5;tz.stagger=0.12;
       _e.set(tz.x,1.2,tz.z);burst(_e,5,0,3);
-      _tip.set(guard.x,1.3,guard.z);var len=_tip.distanceTo(_e);
+      _tip.set(guard.x,guard.by+1.4,guard.z);var len=_tip.distanceTo(_e);
       gt.position.copy(_tip).lerp(_e,0.5);gt.scale.set(1,1,Math.max(len,0.1));gt.lookAt(_e);gt.visible=true;gtT=0.06;
       sfxNoise(0.15,'lowpass',2800,0.4,300);sfxTone(150,0.1,'sine',0.3,50);
       if(tz.hp<=0)killZombie(tz,false,true);
@@ -1560,17 +1641,17 @@ function npcUpdate(dt){
   if(gtT>0){gtT-=dt;if(gtT<=0)gt.visible=false;}
 }
 
-/* ===== CAMP UPGRADE: watchtower, working gate, camp workers, zombie-proof village van =====
-   PASTE THIS WHOLE BLOCK ABOVE THE LINE:   var ITEMS=[
-   Then make the 8 small edits listed in the chat reply. */
+/* ===== CAMP: watchtower, working gate with levers, camp workers, drivable zombie-proof village van ===== */
 P.y=0;S.vanWave=-1;
 var TOWER={x:-15.4,z:-44,H:8.1,lx:-13.1,up:false};
-var WORKERS=[],gateOpen=0,gateWant=0,vanLight=null;
+var WORKERS=[],gateOpen=0,gateWant=0,vanLight=null,vanHead=null,VANG=null,LEVERS=[];
+var VAN={x:15.3,z:-52.5,h:0,v:0,drive:false};
+var vanCols=[];
 var gateL=new THREE.Group(),gateR=new THREE.Group();
 var cwood=lam(0x6b4423,0x140a04),ciron=lam(0x23252b,0x08080a),cstone=lam(0x8a7f70,0x0c0a08),cstraw=lam(0xc9a64a,0x1a1408);
 function towerReset(){TOWER.up=false;P.y=0;towerNpc.en='Climb watchtower';}
 
-/* ---------- working gate (opens as you approach, closes behind you) ---------- */
+/* ---------- working gate (opened and closed with the levers) ---------- */
 (function(){
   var wdm=lam(0x6b4423,0x1a0e06),irn=lam(0x23252b,0x08080a),gd=lam(0xf2b01e,0x6a4200);
   [[gateL,-2.1,1],[gateR,2.1,-1]].forEach(function(d){
@@ -1583,6 +1664,26 @@ function towerReset(){TOWER.up=false;P.y=0;towerNpc.en='Climb watchtower';}
   });
   var sg=makeSign(3.9,0.95,'#7a1e14','#f2b01e','ஊர் வாசல்','TEMPLE GATE · SAFE CAMP',60,20);sg.position.set(0,4.6,-35.4);scene.add(sg);
 })();
+function toggleGate(){
+  gateWant=gateWant?0:1;
+  sfxNoise(0.5,'bandpass',260,0.2);sfxTone(85,0.55,'sawtooth',0.1,55);
+  LEVERS.forEach(function(l){l.en=gateWant?'Close gate':'Open gate';});
+  nearPrev=false;
+  if(gateWant)announce('வாசல் திறந்தது','Gate OPEN · zombies can walk in',2000);
+  else announce('வாசல் மூடியது','Gate closed',1500);
+}
+function makeLever(x,z){
+  var post=lam(0x3a2a1a,0x0c0804),arm=new THREE.Group();
+  box(0.3,1.2,0.3,post,x,0.6,z,scene);box(0.5,0.12,0.5,cstone,x,0.06,z,scene);
+  arm.position.set(x,1.1,z);scene.add(arm);
+  box(0.08,0.7,0.08,ciron,0,0.3,0,arm);
+  var kn=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),bas(0xd9382a));kn.position.set(0,0.68,0);arm.add(kn);
+  var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.16),bas(0xd9382a));mk.position.set(x,2.0,z);scene.add(mk);
+  var n={id:'gate',name:'வாசல்',en:'Open gate',x:x,z:z,by:0,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:mk,markY:2.0,talk:toggleGate,aim:null,cd:0,arm:arm};
+  NPCS.push(n);LEVERS.push(n);addCol(x,z,0.3,1.2);return n;
+}
+makeLever(2.9,-46.5);   // inside the courtyard
+makeLever(2.9,-32.4);   // outside the gate
 
 /* ---------- watchtower: climb with E, shoot over the walls ---------- */
 (function(){
@@ -1610,11 +1711,11 @@ function towerReset(){TOWER.up=false;P.y=0;towerNpc.en='Climb watchtower';}
   for(var i=0;i<6;i++)box(0.8,0.3,0.45,bagm,-1.8+(i%3)*0.9,0.15+Math.floor(i/3)*0.3,-2.6-(i%2)*0.1,g);
   var sg=makeSign(2.2,0.6,'#3a2a1a','#f2b01e','காவல் கோபுரம்','WATCHTOWER',40,16);sg.position.set(0,3.2,1.8);g.add(sg);
 })();
-var towerNpc={id:'tower',name:'கோபுரம்',en:'Climb watchtower',x:TOWER.lx,z:TOWER.z,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:null,markY:2.6,talk:null,aim:null,cd:0};
+var towerNpc={id:'tower',name:'கோபுரம்',en:'Climb watchtower',x:TOWER.lx,z:TOWER.z,by:0,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:null,markY:2.6,talk:null,aim:null,cd:0};
 (function(){var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.16),bas(0xf2b01e));mk.position.set(TOWER.lx,2.6,TOWER.z);scene.add(mk);towerNpc.mark=mk;})();
 NPCS.push(towerNpc);
 towerNpc.talk=function(){
-  if(!TOWER.up){TOWER.up=true;P.x=TOWER.x+0.9;P.z=TOWER.z;towerNpc.en='Climb down';announce('காவல் கோபுரம்','Watchtower · shots hit 1.5x harder',2000);}
+  if(!TOWER.up){TOWER.up=true;P.x=TOWER.x+0.9;P.z=TOWER.z;towerNpc.en='Climb down';announce('காவல் கோபுரம்','Watchtower · shots hit 1.5x harder · Guard Muthu is up here',2200);}
   else{TOWER.up=false;P.x=TOWER.lx+1.5;P.z=TOWER.z;towerNpc.en='Climb watchtower';}
   nearPrev=false;sfxTone(300,0.15,'triangle',0.15,500);
 };
@@ -1683,9 +1784,9 @@ handle(chippy,1,0.5,0.18,0.1,0.1,ciron);chippy.ph=1.7;chippy.sp=1.25;chippy.sx=-
 [-61.4,-58.6].forEach(function(z){box(0.2,1.3,0.2,cwood,-17.4,0.65,z,scene);});
 addCol(-17.4,-59.3,0.6,1.3);addCol(-17.4,-60.7,0.6,1.3);
 
-/* ---------- ZOMBIE-PROOF VILLAGE VAN ---------- */
+/* ---------- ZOMBIE-PROOF VILLAGE VAN (drivable) ---------- */
 (function(){
-  var g=new THREE.Group();g.position.set(15.3,0,-52.5);scene.add(g);
+  var g=new THREE.Group();g.position.set(15.3,0,-52.5);scene.add(g);VANG=g;
   var cream=lam(0xe8e0cc,0x1c1a14),teal=lam(0x1f6b5f,0x08201c),steel=lam(0x5d646e,0x101216),dk=lam(0x15171c,0x050506),
       spk=lam(0x9aa0a8,0x202226),sand=lam(0xb8a070,0x1a1608),glass=bas(0x0c1016);
   var cone=new THREE.ConeGeometry(0.06,0.4,6),gR=cone.clone().rotateZ(-Math.PI/2),gL=cone.clone().rotateZ(Math.PI/2),gF=cone.clone().rotateX(Math.PI/2);
@@ -1720,11 +1821,122 @@ addCol(-17.4,-59.3,0.6,1.3);addCol(-17.4,-60.7,0.6,1.3);
   var bg=new THREE.ConeGeometry(1.4,9,12,1,true);bg.translate(0,-4.5,0);bg.rotateX(-Math.PI/2);
   var bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0xfff2b0,transparent:true,opacity:0.09,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,side:THREE.DoubleSide}));
   bm.position.set(0,0,0.4);vanLight.add(bm);
-  addCol(15.3,-54.4,1.3,2.6);addCol(15.3,-52.5,1.3,2.6);addCol(15.3,-50.6,1.3,2.6);
+  vanHead=new THREE.PointLight(0xfff2b0,0,28);vanHead.position.set(0,1.6,4.4);g.add(vanHead);
+  vanCols.push(addCol(15.3,-54.4,1.3,2.6));vanCols.push(addCol(15.3,-52.5,1.3,2.6));vanCols.push(addCol(15.3,-50.6,1.3,2.6));
 })();
 var mech=addWorker({id:'mech',name:'மெக்கானிக் ராசு',en:'Mechanic Raasu',x:15.3,z:-48.3,face:Math.PI,shirt:0x2f5a8a,lower:0x2a2a30,skin:0x9a6844,cap:0x2a2a30,stache:true},'tinker');
 handle(mech,1,0.4,0.12,0.08,0.08,ciron);
 var driver=addWorker({id:'van',name:'டிரைவர் செல்வம்',en:'Driver Selvam',x:13.1,z:-52.4,face:Math.PI/2,shirt:0xd9a441,lower:0x3a4660,skin:0xa56f4a,stache:true,towel:true},'idle');
+
+/* the van itself is an interaction point: press E near it to drive, press E again to get out */
+var vanNpc={id:'drive',name:'வேன்',en:'Drive van',x:15.3,z:-52.5,by:0,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:null,markY:3.7,talk:null,aim:null,cd:0};
+(function(){var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.2),bas(0x79bf5a));mk.position.set(15.3,3.7,-52.5);scene.add(mk);vanNpc.mark=mk;})();
+NPCS.push(vanNpc);
+
+function vanSync(){
+  var V=VAN,sh=Math.sin(V.h),ch=Math.cos(V.h);
+  if(VANG){VANG.position.set(V.x,0,V.z);VANG.rotation.y=V.h;}
+  for(var k=0;k<3;k++){var c=vanCols[k];if(c){c.x=V.x+sh*(k-1)*1.9;c.z=V.z+ch*(k-1)*1.9;}}
+  vanNpc.x=V.x;vanNpc.z=V.z;
+  if(vanNpc.mark){vanNpc.mark.position.x=V.x;vanNpc.mark.position.z=V.z;}
+}
+function vanCollide(sh,ch){
+  var V=VAN,R=1.05,hit=false;
+  for(var pass=0;pass<2;pass++){
+    for(var k=-1;k<=1;k++){
+      var px=V.x+sh*k*1.7,pz=V.z+ch*k*1.7;
+      for(var i=0;i<COL.length;i++){
+        var c=COL[i];if(vanCols.indexOf(c)>=0)continue;
+        var dx=px-c.x,dz=pz-c.z,m=c.r+R,d2=dx*dx+dz*dz;
+        if(d2<m*m){var d=Math.sqrt(d2)||0.001,ps=m-d;V.x+=dx/d*ps;V.z+=dz/d*ps;px+=dx/d*ps;pz+=dz/d*ps;hit=true;}
+      }
+      if(gateOpen<0.75&&Math.abs(px)<2.6&&Math.abs(pz+42)<R+0.3){
+        var sg=pz>-42?1:-1,ps2=(R+0.3)-Math.abs(pz+42);V.z+=sg*ps2;pz+=sg*ps2;hit=true;
+      }
+      var tdx=px-TOWER.x,tdz=pz-TOWER.z,hh=2.1+R;
+      if(Math.abs(tdx)<hh&&Math.abs(tdz)<hh){
+        if(hh-Math.abs(tdx)<hh-Math.abs(tdz)){var q1=(tdx<0?-hh:hh)-tdx;V.x+=q1;px+=q1;}
+        else{var q2=(tdz<0?-hh:hh)-tdz;V.z+=q2;pz+=q2;}
+        hit=true;
+      }
+    }
+  }
+  V.x=Math.max(-WB+3,Math.min(WB-3,V.x));V.z=Math.max(-WB+3,Math.min(WB-3,V.z));
+  return hit;
+}
+var eng=null;
+function engine(on,v){
+  if(!AC||!master)return;
+  if(!eng){
+    var o=AC.createOscillator(),f=AC.createBiquadFilter(),g=AC.createGain();
+    o.type='sawtooth';f.type='lowpass';f.frequency.value=420;g.gain.value=0;
+    o.connect(f);f.connect(g);g.connect(master);o.start();eng={o:o,g:g};
+  }
+  eng.o.frequency.value=38+Math.abs(v)*6;
+  eng.g.gain.value=on?(0.05+0.05*Math.min(1,Math.abs(v)/16)):0;
+}
+function vanStep(dt){
+  var V=VAN;
+  if(V.drive){
+    var th=Math.max(-1,Math.min(1,(keys.KeyW?1:0)-(keys.KeyS?1:0)+stick.y));
+    var st=Math.max(-1,Math.min(1,(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x));
+    if(th>0.05)V.v+=th*(V.v<0?18:9)*dt;
+    else if(th<-0.05)V.v+=th*(V.v>0?18:6)*dt;
+    else{var dec=Math.min(Math.abs(V.v),4*dt);V.v-=(V.v>0?1:-1)*dec;}
+    V.v=Math.max(-6,Math.min(16,V.v));
+    V.h-=st*1.6*Math.max(-1,Math.min(1,V.v/4))*dt;
+  }else if(V.v!==0){
+    V.v*=Math.max(0,1-3*dt);if(Math.abs(V.v)<0.05)V.v=0;
+  }
+  var sh=Math.sin(V.h),ch=Math.cos(V.h);
+  if(Math.abs(V.v)>0.01){
+    V.x+=sh*V.v*dt;V.z+=ch*V.v*dt;
+    if(vanCollide(sh,ch))V.v*=Math.max(0,1-8*dt);
+  }
+  vanSync();
+  if(V.drive){
+    P.x=V.x;P.z=V.z;P.y=0;
+    // chase camera drifts back behind the van when you are not looking around
+    if(Math.abs(V.v)>2&&S.time-P.lookT>1.2){
+      var df=Math.atan2(Math.sin(V.h+Math.PI-P.yaw),Math.cos(V.h+Math.PI-P.yaw));
+      P.yaw+=df*Math.min(1,dt*2);
+    }
+    // run zombies over
+    if(Math.abs(V.v)>3.5){
+      for(var i=Z.length-1;i>=0;i--){
+        var z=Z[i],dx=z.x-V.x,dz=z.z-V.z,along=dx*sh+dz*ch,across=dx*ch-dz*sh;
+        if(Math.abs(across)<2.3&&Math.abs(along)<3.9&&z.vh<=S.time){
+          z.vh=S.time+0.5;z.hp-=Math.abs(V.v)*1.1;z.stagger=0.5;
+          var sgn=across>=0?1:-1;z.x+=ch*sgn*1.2;z.z-=sh*sgn*1.2;
+          _e.set(z.x,1,z.z);burst(_e,8,1,5);P.shake=Math.max(P.shake,0.6);
+          if(z.hp<=0)killZombie(z,false);else sfxHit(false);
+          V.v*=0.95;
+        }
+      }
+    }
+  }
+  engine(V.drive&&S.mode==='play',V.v);
+}
+function toggleDrive(){
+  var V=VAN;
+  if(!V.drive){
+    if(TOWER.up)return;
+    V.drive=true;V.v=0;P.x=V.x;P.z=V.z;P.y=0;P.yaw=V.h+Math.PI;P.pitch=-0.15;P.lookT=-9;
+    gun.visible=false;vanNpc.en='Exit van';
+    announce('வேன்','W/S drive · A/D steer · run zombies down · E to exit',2600);
+  }else{
+    var sh=Math.sin(V.h),ch=Math.cos(V.h),opts=[[ch*2.6,-sh*2.6],[-ch*2.6,sh*2.6],[-sh*4.6,-ch*4.6],[sh*4.6,ch*4.6]],ok=null;
+    for(var i=0;i<opts.length;i++){
+      var ex=V.x+opts[i][0],ez=V.z+opts[i][1];
+      if(!blocked(ex,ez,0.5)&&Math.abs(ex)<WB&&Math.abs(ez)<WB){ok=[ex,ez];break;}
+    }
+    if(!ok)ok=[V.x+opts[0][0],V.z+opts[0][1]];
+    V.drive=false;V.v=0;P.x=ok[0];P.z=ok[1];P.y=0;
+    gun.visible=true;vanNpc.en='Drive van';
+  }
+  nearPrev=false;sfxTone(220,0.2,'triangle',0.2,330);
+}
+vanNpc.talk=toggleDrive;
 
 cook.talk=function(){speak('பாட்டி · Paati',pick(['Kanji is on the fire. The village eats before the roosters call.','Eat first, fight later, kanna.']));};
 smith.talk=function(){speak('ஆசாரி · Aasari',pick(['I am sharpening the van spikes. Let the zombies touch it!','Hot iron, steady hand. That is how a village survives.']));};
@@ -1732,11 +1944,11 @@ sweeper.talk=function(){speak('முனியம்மா · Muniyamma',pick(['
 grinder.talk=function(){speak('அஞ்சலை · Anjalai',pick(['Grinding batter for tomorrow\'s idli. We will have a tomorrow.','The stone is heavy but my hands are heavier.']));};
 poosari.talk=function(){speak('பூசாரி · Poosari',pick(['The bell keeps the dark away. Fight well.','Amman is watching the gate tonight.']));};
 chippy.talk=function(){speak('தச்சர் · Thachar',pick(['This barricade is teak from the old thinnai. It will hold.','Climb the watchtower, thambi. Shoot over the wall.']));};
-mech.talk=function(){speak('மெக்கானிக் ராசு · Raasu',pick(['Spikes on the bumper, mesh on the glass. Nothing bites this van.','Searchlight is working. Zombies hate the light.']));};
+mech.talk=function(){speak('மெக்கானிக் ராசு · Raasu',pick(['Spikes on the bumper, mesh on the glass. Nothing bites this van. Climb in and drive it!','Open the gate with the lever, then take the van out. Run them over, thambi.']));};
 driver.talk=function(){
   if(S.vanWave===S.wave){speak('டிரைவர் செல்வம் · Driver Selvam','Van is empty for now, thambi. Fresh stock after the next wave.');return;}
   S.vanWave=S.wave;S.reserve+=30;S.nades=Math.min(5,S.nades+1);sfxPickup();
-  speak('டிரைவர் செல்வம் · Driver Selvam','Welded in the village workshop, zombie-proof! Take +30 ammo and a grenade. Free once every wave.');
+  speak('டிரைவர் செல்வம் · Driver Selvam','Welded in the village workshop, zombie-proof! Take +30 ammo and a grenade. Free once every wave. Press E beside the van to drive it yourself.');
 };
 
 function workFx(t){
@@ -1762,15 +1974,22 @@ function workFx(t){
     }
   }
 }
+function campReset(){
+  gateWant=0;gateOpen=0;
+  LEVERS.forEach(function(l){l.en='Open gate';});
+  VAN.x=15.3;VAN.z=-52.5;VAN.h=0;VAN.v=0;VAN.drive=false;vanNpc.en='Drive van';vanSync();
+  NPCS.forEach(function(n){if(n.max)n.hp=n.max;n.alertT=-9;});
+  engine(false,0);gun.visible=true;
+}
 function campFx(t,dt){
-  var d=Math.hypot(P.x,P.z+42),want=(S.mode==='play'&&d<9)?1:0;
-  if(want!==gateWant){gateWant=want;if(S.mode==='play'){sfxNoise(0.5,'bandpass',260,0.2);sfxTone(85,0.55,'sawtooth',0.1,55);}}
-  gateOpen+=(want-gateOpen)*Math.min(1,dt*3);
+  gateOpen+=(gateWant-gateOpen)*Math.min(1,dt*3);
   gateL.rotation.y=gateOpen*1.5;gateR.rotation.y=-gateOpen*1.5;
-  if(vanLight)vanLight.rotation.y=Math.sin(t*0.7)*1.1;
+  for(var i=0;i<LEVERS.length;i++){var ar=LEVERS[i].arm;ar.rotation.x+=((gateWant?0.9:-0.9)-ar.rotation.x)*Math.min(1,dt*8);}
+  if(vanLight)vanLight.rotation.y=VAN.drive?0:Math.sin(t*0.7)*1.1;
+  if(vanHead)vanHead.intensity=VAN.drive?1.8:0;
   workFx(t);
 }
-/* ===== end camp upgrade ===== */
+/* ===== end camp ===== */
 
 var ITEMS=[
   {n:'Shotgun',d:'8 pellets',c:250,f:function(){return buyW(1);}},
