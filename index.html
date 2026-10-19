@@ -544,7 +544,7 @@ function templeFx(t){
   box(1.2,0.7,0.05,red,0.7,8.6,-54,scene);
   var mt=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,6),gold);mt.position.set(0,9.2,-54);scene.add(mt);
   addCol(0,-54,0.9,10);
-  [[-15,-45],[15,-45],[-15,-72],[15,-72],[-8,-62],[8,-62]].forEach(function(p){
+  [[-11,-49],[15,-45],[-15,-72],[15,-72],[-8,-62],[8,-62]].forEach(function(p){
     box(0.5,1.5,0.5,stone,p[0],0.75,p[1],scene);box(0.8,0.2,0.8,stone,p[0],1.6,p[1],scene);
     flame(p[0],1.95,p[1],1,scene);addCol(p[0],p[1],0.4,2);
   });
@@ -1050,7 +1050,7 @@ function hudUpdate(){
 }
 var radar=$('radar'),rctx=radar.getContext('2d');
 function drawRadar(){
-  var W=radar.width,c=W/2,range=42,sc=(c-6)/range;
+  var W=radar.width,c=W/2,range=(P.y>1?70:42),sc=(c-6)/range;
   rctx.clearRect(0,0,W,W);
   rctx.strokeStyle='rgba(244,236,216,.25)';rctx.lineWidth=1;
   rctx.beginPath();rctx.arc(c,c,c-4,0,6.2832);rctx.stroke();rctx.beginPath();rctx.arc(c,c,(c-4)/2,0,6.2832);rctx.stroke();
@@ -1102,7 +1102,7 @@ function resetGame(){
   clearZombies();clearPickups();
   S.wave=0;S.score=0;S.kills=0;S.hp=S.maxHp;S.mag=S.magSize;S.reserve=60;S.wpn=0;S.own=[true,false,false];S.mags=[12,0,0];S.magSize=12;S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;S.reload=0;S.fireCd=0;S.combo=0;S.comboT=0;
   S.toSpawn=0;S.waveGap=2.6;S.time=0;S.forceBrutes=0;
-  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;
+  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;towerReset();
   Object.keys(cache).forEach(function(k){delete cache[k];});
 }
 function startGame(){
@@ -1156,7 +1156,7 @@ function shoot(){
     if(_d.y<-0.001){var tg=-_o.y/_d.y;if(tg<tWall&&tg<tHit){tWall=tg;dust=true;}}
     if(hz&&!hz.dead&&tHit<tWall){
       _e.copy(hp);
-      hz.hp-=(head?3:1)*w.dmg;hz.stagger=0.16;
+      hz.hp-=(head?3:1)*w.dmg*(P.y>1?1.5:1);hz.stagger=0.16;
       burst(hp,head?10:6,head?1:0,3.2);hitMark(head);
       if(hz.hp<=0)killZombie(hz,head);else sfxHit(head);
     }else{
@@ -1228,9 +1228,9 @@ function update(dt){
   var sprint=keys.ShiftLeft||keys.ShiftRight||Math.hypot(stick.x,stick.y)>0.95;
   var sp=(sprint?8.2:5.2),sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
   P.x+=(-sy*f+cy*r)*sp*dt;P.z+=(-cy*f-sy*r)*sp*dt;
-  collide(P,0.45);
+  if(!(TOWER&&TOWER.up))collide(P,0.45);
   P.x=Math.max(-WB,Math.min(WB,P.x));P.z=Math.max(-WB,Math.min(WB,P.z));
-  var moving=mag>0.1;P.bob+=dt*(moving?(sprint?13:9):0);
+  towerStep(dt);var moving=mag>0.1;P.bob+=dt*(moving?(sprint?13:9):0);
   // weapon
   if(S.fireCd>0)S.fireCd-=dt;
   if(S.reload>0){S.reload-=dt;if(S.reload<=0){S.reload=0;var need=S.magSize-S.mag,take=Math.min(need,S.reserve);S.mag+=take;S.reserve-=take;}}
@@ -1314,7 +1314,7 @@ function updateFx(dt){
 }
 function updateCamera(){
   var sh=P.shake*0.03;
-  camera.position.set(P.x,EYE+Math.sin(P.bob)*0.045,P.z);
+  camera.position.set(P.x,EYE+(P.y||0)+Math.sin(P.bob)*0.045,P.z);
   camera.rotation.set(P.pitch+(Math.random()-0.5)*sh,P.yaw+(Math.random()-0.5)*sh,0,'YXZ');
 }
 
@@ -1560,6 +1560,218 @@ function npcUpdate(dt){
   if(gtT>0){gtT-=dt;if(gtT<=0)gt.visible=false;}
 }
 
+/* ===== CAMP UPGRADE: watchtower, working gate, camp workers, zombie-proof village van =====
+   PASTE THIS WHOLE BLOCK ABOVE THE LINE:   var ITEMS=[
+   Then make the 8 small edits listed in the chat reply. */
+P.y=0;S.vanWave=-1;
+var TOWER={x:-15.4,z:-44,H:8.1,lx:-13.1,up:false};
+var WORKERS=[],gateOpen=0,gateWant=0,vanLight=null;
+var gateL=new THREE.Group(),gateR=new THREE.Group();
+var cwood=lam(0x6b4423,0x140a04),ciron=lam(0x23252b,0x08080a),cstone=lam(0x8a7f70,0x0c0a08),cstraw=lam(0xc9a64a,0x1a1408);
+function towerReset(){TOWER.up=false;P.y=0;towerNpc.en='Climb watchtower';}
+
+/* ---------- working gate (opens as you approach, closes behind you) ---------- */
+(function(){
+  var wdm=lam(0x6b4423,0x1a0e06),irn=lam(0x23252b,0x08080a),gd=lam(0xf2b01e,0x6a4200);
+  [[gateL,-2.1,1],[gateR,2.1,-1]].forEach(function(d){
+    var g=d[0],s=d[2];g.position.set(d[1],0.15,-42);scene.add(g);
+    box(2.0,3.6,0.16,wdm,s*1.0,1.8,0,g);
+    for(var i=0;i<5;i++)box(0.04,3.5,0.2,irn,s*(0.2+i*0.4),1.8,0,g);
+    [0.7,1.8,2.9].forEach(function(y){box(2.0,0.14,0.22,irn,s*1.0,y,0,g);});
+    for(var k=0;k<4;k++)for(var m=0;m<3;m++){var st=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,4),gd);st.position.set(s*(0.3+k*0.45),0.7+m*1.1,0.12);g.add(st);}
+    var rg=new THREE.Mesh(new THREE.TorusGeometry(0.14,0.03,6,12),gd);rg.position.set(s*1.7,1.5,0.12);g.add(rg);
+  });
+  var sg=makeSign(3.9,0.95,'#7a1e14','#f2b01e','ஊர் வாசல்','TEMPLE GATE · SAFE CAMP',60,20);sg.position.set(0,4.6,-35.4);scene.add(sg);
+})();
+
+/* ---------- watchtower: climb with E, shoot over the walls ---------- */
+(function(){
+  var g=new THREE.Group();g.position.set(TOWER.x,0,TOWER.z);scene.add(g);
+  var H=TOWER.H,post=lam(0x5a3d22,0x140c06),plank=lam(0x8a5a30,0x1a0e06),bagm=lam(0xb8a070,0x1a1608),roofm=lam(0xb8442c,0x240c06);
+  [[-1.7,-1.7],[1.7,-1.7],[-1.7,1.7],[1.7,1.7]].forEach(function(p){box(0.28,H+2.6,0.28,post,p[0],(H+2.6)/2,p[1],g);});
+  [[0,-1.7,0],[0,1.7,0],[-1.7,0,1],[1.7,0,1]].forEach(function(b){
+    for(var lv=0;lv<3;lv++){
+      var y=0.9+lv*2.4;
+      box(b[2]?0.12:3.4,0.14,b[2]?3.4:0.12,plank,b[0],y,b[1],g);
+      var dg=box(b[2]?0.1:4.1,0.1,b[2]?4.1:0.1,plank,b[0],y+1.2,b[1],g);
+      if(b[2])dg.rotation.x=(lv%2?-1:1)*0.6;else dg.rotation.z=(lv%2?-1:1)*0.6;
+    }
+  });
+  box(4.6,0.22,4.6,plank,0,H-0.11,0,g);
+  [[0,-2.2,4.6,0],[0,2.2,4.6,0],[-2.2,0,0,4.6]].forEach(function(r){
+    [0.5,1.0].forEach(function(h){box(r[2]||0.1,0.08,r[3]||0.1,plank,r[0],H+h,r[1],g);});
+  });
+  [-1.65,1.65].forEach(function(z){[0.5,1.0].forEach(function(h){box(0.1,0.08,1.2,plank,2.2,H+h,z,g);});});
+  [-0.35,0.35].forEach(function(z){box(0.08,H,0.08,plank,2.0,H/2,z,g);});
+  for(var r=0;r<20;r++)box(0.06,0.06,0.78,plank,2.0,0.4+r*0.4,0,g);
+  var rf=new THREE.Mesh(new THREE.ConeGeometry(3.6,1.6,4),roofm);rf.geometry.rotateY(Math.PI/4);rf.position.set(0,H+3.4,0);g.add(rf);
+  var bl=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),bas(0xffd98a));bl.position.set(0,H+2.3,0);g.add(bl);
+  box(0.04,0.4,0.04,plank,0,H+2.5,0,g);
+  for(var i=0;i<6;i++)box(0.8,0.3,0.45,bagm,-1.8+(i%3)*0.9,0.15+Math.floor(i/3)*0.3,-2.6-(i%2)*0.1,g);
+  var sg=makeSign(2.2,0.6,'#3a2a1a','#f2b01e','காவல் கோபுரம்','WATCHTOWER',40,16);sg.position.set(0,3.2,1.8);g.add(sg);
+})();
+var towerNpc={id:'tower',name:'கோபுரம்',en:'Climb watchtower',x:TOWER.lx,z:TOWER.z,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:null,markY:2.6,talk:null,aim:null,cd:0};
+(function(){var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.16),bas(0xf2b01e));mk.position.set(TOWER.lx,2.6,TOWER.z);scene.add(mk);towerNpc.mark=mk;})();
+NPCS.push(towerNpc);
+towerNpc.talk=function(){
+  if(!TOWER.up){TOWER.up=true;P.x=TOWER.x+0.9;P.z=TOWER.z;towerNpc.en='Climb down';announce('காவல் கோபுரம்','Watchtower · shots hit 1.5x harder',2000);}
+  else{TOWER.up=false;P.x=TOWER.lx+1.5;P.z=TOWER.z;towerNpc.en='Climb watchtower';}
+  nearPrev=false;sfxTone(300,0.15,'triangle',0.15,500);
+};
+function towerStep(dt){
+  var tgt=TOWER.up?TOWER.H:0;
+  P.y+=(tgt-P.y)*Math.min(1,dt*5);if(Math.abs(P.y-tgt)<0.03)P.y=tgt;
+  if(TOWER.up){
+    P.x=Math.max(TOWER.x-1.7,Math.min(TOWER.x+1.7,P.x));P.z=Math.max(TOWER.z-1.7,Math.min(TOWER.z+1.7,P.z));
+  }else if(P.y<1.2){
+    var dx=P.x-TOWER.x,dz=P.z-TOWER.z,h=2.1;
+    if(Math.abs(dx)<h&&Math.abs(dz)<h){
+      if(h-Math.abs(dx)<h-Math.abs(dz))P.x=TOWER.x+(dx<0?-h:h);else P.z=TOWER.z+(dz<0?-h:h);
+    }
+  }
+}
+
+/* ---------- camp workers ---------- */
+function addWorker(o,job){
+  o.noLook=true;o.talkable=true;
+  var n=addNpc(o);
+  n.job=job;n.arms=n.root.children.filter(function(c){return c.isGroup;});
+  n.ph=Math.random()*6;n.x0=o.x;n.z0=o.z;n.last=0;n.hit=false;
+  WORKERS.push(n);return n;
+}
+function handle(n,hand,len,hw,hh,hd,mat){
+  box(0.05,len,0.05,cwood,0,-0.5-len/2,0,n.arms[hand]);
+  if(hw)box(hw,hh,hd,mat,0,-0.5-len,0,n.arms[hand]);
+}
+/* cook stirring kanji */
+var cook=addWorker({id:'cook',name:'பாட்டி',en:'Paati',x:-12.5,z:-62.5,face:0,dress:true,shirt:0xe9e1c8,lower:0x4a7a5a,pallu:0x4a7a5a,skin:0xa8714c,hair:0xdcdcdc,bun:true},'stir');
+handle(cook,1,0.8,0.14,0.08,0.14,ciron);
+(function(){
+  var px=-12.5,pz=-61.5;
+  [0,2.1,4.2].forEach(function(a){box(0.18,0.3,0.18,cstone,px+Math.cos(a)*0.45,0.15,pz+Math.sin(a)*0.45,scene);});
+  var pot=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.42,0.55,12),lam(0xb5651d,0x2a1006));pot.position.set(px,0.58,pz);scene.add(pot);
+  var kn=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.04,12),bas(0xe0c090));kn.position.set(px,0.86,pz);scene.add(kn);
+  flame(px,0.2,pz,1.3,scene);flame(px+0.2,0.18,pz+0.1,0.9,scene);addCol(px,pz,0.7,1);
+})();
+/* blacksmith at the forge (sharpening van spikes) */
+var smith=addWorker({id:'smith',name:'ஆசாரி',en:'Aasari',x:16.4,z:-63.8,face:0,shirt:0x555555,lower:0x3a3a42,skin:0x8a5a3a,towel:true,stache:true},'hammer');
+handle(smith,1,0.5,0.2,0.12,0.12,ciron);smith.sx=16.4;smith.sy=0.95;smith.sz=-62.94;
+box(0.5,0.7,0.5,cwood,16.4,0.35,-62.94,scene);box(0.7,0.2,0.3,ciron,16.4,0.8,-62.94,scene);addCol(16.4,-62.94,0.5,1);
+box(1.0,0.8,1.0,cstone,18.2,0.4,-62.9,scene);box(0.7,0.05,0.7,bas(0xff5a1a),18.2,0.82,-62.9,scene);
+flame(18.2,1.1,-62.9,1.6,scene);addCol(18.2,-62.9,0.8,1);
+/* sweeper */
+var sweeper=addWorker({id:'sweep',name:'முனியம்மா',en:'Muniyamma',x:-3.5,z:-57.5,face:0,dress:true,shirt:0xc9d98a,lower:0x2f7a8a,pallu:0x2f7a8a,skin:0xa56f4a,bun:true},'sweep');
+handle(sweeper,1,1.2,0.4,0.12,0.14,cstraw);
+/* grinding stone */
+var grinder=addWorker({id:'grind',name:'அஞ்சலை',en:'Anjalai',x:-9.5,z:-67.3,face:0,sit:true,shirt:0xe0568a,lower:0x6a2f5a,skin:0xa8714c,bun:true},'grind');
+(function(){
+  var b=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.46,0.22,12),cstone);b.position.set(-9.5,0.11,-66.5);scene.add(b);
+  var t=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.14,12),lam(0x6a6258,0x0c0a08));t.position.set(-9.5,0.3,-66.5);scene.add(t);addCol(-9.5,-66.5,0.5,0.6);
+})();
+/* poosari ringing the bell at the shrine */
+var poosari=addWorker({id:'poosari',name:'பூசாரி',en:'Poosari',x:2.9,z:-63.6,face:Math.PI,shirt:0xf4ecd8,lower:0xf4ecd8,skin:0x9a6a46,hair:0x2a1a14,towel:true,stache:true},'bell');
+(function(){
+  var a=poosari.arms[0],b=poosari.arms[1],br=lam(0xd9a441,0x6a4200);
+  box(0.3,0.03,0.3,br,0,-0.62,0,a);
+  var fl=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,6),bas(0xffb030));fl.position.set(0,-0.7,0);a.add(fl);
+  var bl=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.16,8),br);bl.position.set(0,-0.68,0);b.add(bl);
+})();
+/* carpenter building a spiked barricade */
+var chippy=addWorker({id:'thachar',name:'தச்சர்',en:'Thachar',x:-16.2,z:-60,face:-Math.PI/2,shirt:0x9a6a3a,lower:0xf4ecd8,skin:0x9a6844,towel:true,stache:true},'hammer');
+handle(chippy,1,0.5,0.18,0.1,0.1,ciron);chippy.ph=1.7;chippy.sp=1.25;chippy.sx=-17.1;chippy.sy=0.95;chippy.sz=-60;
+[0.35,0.65,0.95].forEach(function(y){box(0.12,0.2,3.0,cwood,-17.4,y,-60,scene);});
+[-61.4,-58.6].forEach(function(z){box(0.2,1.3,0.2,cwood,-17.4,0.65,z,scene);});
+addCol(-17.4,-59.3,0.6,1.3);addCol(-17.4,-60.7,0.6,1.3);
+
+/* ---------- ZOMBIE-PROOF VILLAGE VAN ---------- */
+(function(){
+  var g=new THREE.Group();g.position.set(15.3,0,-52.5);scene.add(g);
+  var cream=lam(0xe8e0cc,0x1c1a14),teal=lam(0x1f6b5f,0x08201c),steel=lam(0x5d646e,0x101216),dk=lam(0x15171c,0x050506),
+      spk=lam(0x9aa0a8,0x202226),sand=lam(0xb8a070,0x1a1608),glass=bas(0x0c1016);
+  var cone=new THREE.ConeGeometry(0.06,0.4,6),gR=cone.clone().rotateZ(-Math.PI/2),gL=cone.clone().rotateZ(Math.PI/2),gF=cone.clone().rotateX(Math.PI/2);
+  var wg=new THREE.CylinderGeometry(0.42,0.42,0.3,12);wg.rotateZ(Math.PI/2);
+  var i,m;
+  box(2.2,0.35,5.6,dk,0,0.55,0,g);box(2.2,1.1,5.4,cream,0,1.05,0,g);box(2.22,0.2,5.44,teal,0,1.0,0,g);
+  box(2.1,1.0,5.2,cream,0,2.1,0,g);box(2.2,0.12,5.3,steel,0,2.64,0,g);
+  [-1,1].forEach(function(s){
+    box(0.05,0.55,5.0,glass,s*1.06,2.15,0,g);
+    box(0.07,0.05,5.0,steel,s*1.1,1.9,0,g);box(0.07,0.05,5.0,steel,s*1.1,2.4,0,g);
+    for(var z=-2.4;z<=2.41;z+=0.4)box(0.07,0.6,0.05,steel,s*1.1,2.15,z,g);
+    for(var z2=-2;z2<=2.01;z2+=0.9){m=new THREE.Mesh(s>0?gR:gL,spk);m.position.set(s*1.3,0.85,z2);g.add(m);}
+    var sgn=makeSign(2.8,0.8,'#1f6b5f','#f4ecd8','ஊர் காப்போம்','ZOMBIE PROOF VAN',56,22);sgn.position.set(s*1.13,1.05,0);sgn.rotation.y=s*Math.PI/2;g.add(sgn);
+  });
+  [[-1,1.7],[1,1.7],[-1,-1.7],[1,-1.7]].forEach(function(w){
+    m=new THREE.Mesh(wg,dk);m.position.set(w[0]*1.05,0.42,w[1]);g.add(m);
+    m=new THREE.Mesh(w[0]>0?gR:gL,spk);m.position.set(w[0]*1.28,0.42,w[1]);g.add(m);
+  });
+  box(1.9,0.8,0.05,glass,0,2.1,2.62,g);
+  [1.8,2.1,2.4].forEach(function(y){box(1.9,0.05,0.07,steel,0,y,2.66,g);});
+  for(i=-0.8;i<=0.81;i+=0.4)box(0.05,0.8,0.07,steel,i,2.1,2.66,g);
+  box(1.8,0.5,0.06,steel,0,1.05,2.73,g);
+  [-0.8,0.8].forEach(function(x){box(0.3,0.2,0.05,bas(0xfff2b0),x,1.1,2.76,g);});
+  box(2.4,0.3,0.3,steel,0,0.55,2.9,g);
+  for(i=-0.9;i<=0.91;i+=0.45){m=new THREE.Mesh(gF,spk);m.position.set(i,0.55,3.25);g.add(m);}
+  var pl=makeSign(0.9,0.28,'#f2c21e','#161616','TN 45 Z 0001','',40,12);pl.position.set(0,0.62,3.06);g.add(pl);
+  var sp=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.2,12).rotateX(Math.PI/2),dk);sp.position.set(0,1.3,-2.8);g.add(sp);
+  for(i=0;i<6;i++){box(0.5,0.25,0.32,sand,-0.85,2.83,-2.2+i*0.8,g);box(0.5,0.25,0.32,sand,0.85,2.83,-2.2+i*0.8,g);}
+  box(0.2,0.2,0.2,steel,0,2.8,1.3,g);
+  vanLight=new THREE.Group();vanLight.position.set(0,3.0,1.3);g.add(vanLight);
+  box(0.4,0.3,0.5,steel,0,0,0.1,vanLight);box(0.3,0.22,0.05,bas(0xfff2b0),0,0,0.37,vanLight);
+  var bg=new THREE.ConeGeometry(1.4,9,12,1,true);bg.translate(0,-4.5,0);bg.rotateX(-Math.PI/2);
+  var bm=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0xfff2b0,transparent:true,opacity:0.09,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,side:THREE.DoubleSide}));
+  bm.position.set(0,0,0.4);vanLight.add(bm);
+  addCol(15.3,-54.4,1.3,2.6);addCol(15.3,-52.5,1.3,2.6);addCol(15.3,-50.6,1.3,2.6);
+})();
+var mech=addWorker({id:'mech',name:'மெக்கானிக் ராசு',en:'Mechanic Raasu',x:15.3,z:-48.3,face:Math.PI,shirt:0x2f5a8a,lower:0x2a2a30,skin:0x9a6844,cap:0x2a2a30,stache:true},'tinker');
+handle(mech,1,0.4,0.12,0.08,0.08,ciron);
+var driver=addWorker({id:'van',name:'டிரைவர் செல்வம்',en:'Driver Selvam',x:13.1,z:-52.4,face:Math.PI/2,shirt:0xd9a441,lower:0x3a4660,skin:0xa56f4a,stache:true,towel:true},'idle');
+
+cook.talk=function(){speak('பாட்டி · Paati',pick(['Kanji is on the fire. The village eats before the roosters call.','Eat first, fight later, kanna.']));};
+smith.talk=function(){speak('ஆசாரி · Aasari',pick(['I am sharpening the van spikes. Let the zombies touch it!','Hot iron, steady hand. That is how a village survives.']));};
+sweeper.talk=function(){speak('முனியம்மா · Muniyamma',pick(['Even at the end of the world, the courtyard must be swept.','Mind the dust, thambi. Kolam goes down fresh every morning.']));};
+grinder.talk=function(){speak('அஞ்சலை · Anjalai',pick(['Grinding batter for tomorrow\'s idli. We will have a tomorrow.','The stone is heavy but my hands are heavier.']));};
+poosari.talk=function(){speak('பூசாரி · Poosari',pick(['The bell keeps the dark away. Fight well.','Amman is watching the gate tonight.']));};
+chippy.talk=function(){speak('தச்சர் · Thachar',pick(['This barricade is teak from the old thinnai. It will hold.','Climb the watchtower, thambi. Shoot over the wall.']));};
+mech.talk=function(){speak('மெக்கானிக் ராசு · Raasu',pick(['Spikes on the bumper, mesh on the glass. Nothing bites this van.','Searchlight is working. Zombies hate the light.']));};
+driver.talk=function(){
+  if(S.vanWave===S.wave){speak('டிரைவர் செல்வம் · Driver Selvam','Van is empty for now, thambi. Fresh stock after the next wave.');return;}
+  S.vanWave=S.wave;S.reserve+=30;S.nades=Math.min(5,S.nades+1);sfxPickup();
+  speak('டிரைவர் செல்வம் · Driver Selvam','Welded in the village workshop, zombie-proof! Take +30 ammo and a grenade. Free once every wave.');
+};
+
+function workFx(t){
+  for(var i=0;i<WORKERS.length;i++){
+    var n=WORKERS[i],a=n.arms[0],b=n.arms[1],s=t*(n.sp||1)+n.ph,c,dd=Math.hypot(P.x-n.x,P.z-n.z);
+    if(n.job==='hammer'){
+      c=0.5+0.5*Math.sin(s*4);b.rotation.x=-0.9-1.4*c*c;a.rotation.x=-0.7;a.rotation.z=0.15;
+      if(c<0.04&&!n.hit){n.hit=true;_e.set(n.sx,n.sy,n.sz);burst(_e,4,2,2.6);if(dd<18)sfxTone(1900+Math.random()*300,0.07,'square',0.05*(1-dd/18),900);}
+      else if(c>0.3)n.hit=false;
+    }else if(n.job==='stir'){
+      b.rotation.x=-0.9+Math.sin(s*3)*0.18;b.rotation.z=Math.cos(s*3)*0.25;a.rotation.x=-0.9;a.rotation.z=0;
+    }else if(n.job==='sweep'){
+      a.rotation.x=b.rotation.x=-0.5;a.rotation.z=b.rotation.z=Math.sin(s*2.5)*0.35;
+      n.root.position.x=n.x0+Math.sin(s*1.25)*0.4;
+    }else if(n.job==='grind'){
+      b.rotation.x=-1.05+Math.sin(s*3)*0.2;b.rotation.z=Math.cos(s*3)*0.25;
+      a.rotation.x=-1.05-Math.sin(s*3)*0.2;a.rotation.z=-Math.cos(s*3)*0.25;
+    }else if(n.job==='bell'){
+      b.rotation.x=-1.35;b.rotation.z=Math.sin(s*7)*0.35;a.rotation.x=-1.2+Math.sin(s*1.2)*0.12;a.rotation.z=Math.cos(s*1.2)*0.25;
+      if(Math.sin(s*7)>0.97&&t-n.last>0.35){n.last=t;if(dd<14)sfxTone(2300+Math.random()*200,0.6,'sine',0.05*(1-dd/14));}
+    }else if(n.job==='tinker'){
+      b.rotation.x=-1.25+Math.sin(s*7)*0.12;b.rotation.z=Math.sin(s*3.5)*0.15;a.rotation.x=-1.1+Math.sin(s*5)*0.1;
+    }
+  }
+}
+function campFx(t,dt){
+  var d=Math.hypot(P.x,P.z+42),want=(S.mode==='play'&&d<9)?1:0;
+  if(want!==gateWant){gateWant=want;if(S.mode==='play'){sfxNoise(0.5,'bandpass',260,0.2);sfxTone(85,0.55,'sawtooth',0.1,55);}}
+  gateOpen+=(want-gateOpen)*Math.min(1,dt*3);
+  gateL.rotation.y=gateOpen*1.5;gateR.rotation.y=-gateOpen*1.5;
+  if(vanLight)vanLight.rotation.y=Math.sin(t*0.7)*1.1;
+  workFx(t);
+}
+/* ===== end camp upgrade ===== */
+
 var ITEMS=[
   {n:'Shotgun',d:'8 pellets',c:250,f:function(){return buyW(1);}},
   {n:'Rifle',d:'fast, strong',c:450,f:function(){return buyW(2);}},
@@ -1659,7 +1871,7 @@ function frame(){
   }
   var tgt=S.mode==='menu'?0:Math.min(1,Math.max(0,(S.wave-1)/10));S.day+=(tgt-S.day)*Math.min(1,dt*0.4);
   sky.material.uniforms.uD.value=S.day;scene.fog.color.setHex(0x2b2347).lerp(_dc.setHex(0xe0a878),S.day);hemi.intensity=0.95+S.day*0.55;moonLight.intensity=0.65*(1-S.day*0.7);
-  templeFx(performance.now()/1000);
+  templeFx(performance.now()/1000);campFx(performance.now()/1000,dt);
   updateFx(dt);
   sky.position.copy(camera.position);
   renderer.render(scene,camera);
