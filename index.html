@@ -179,7 +179,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
 body.touch-mode .mission{top:calc(58px + env(safe-area-inset-top,0px));max-width:min(300px,46vw);padding:5px 10px}
 body.touch-mode .mission .mt{font-size:13px}body.touch-mode .mission .ms{font-size:10px}
 #btnMap{left:50%;margin-left:80px;top:calc(10px + env(safe-area-inset-top,0px));width:44px;height:44px;font-size:11px}
-body.touch-mode #btnMap{left:calc(50% + 48px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:10px}
+body.touch-mode #btnMap{left:calc(50% + 76px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:10px}
 .islmap{position:fixed;inset:0;z-index:9;background:rgba(4,6,20,.82);display:flex;align-items:center;justify-content:center;touch-action:none}
 .islmap-box{position:relative;border:2px solid rgba(242,176,30,.6);border-radius:10px;overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.7);width:min(94vw,calc(88vh*1.2));max-height:88vh}
 .islmap canvas{display:block;width:100%;height:auto}
@@ -204,10 +204,10 @@ body.touch-mode .hud .ammo{position:fixed;left:50%;transform:translateX(-50%);bo
 body.touch-mode .ammo .lbl{justify-content:center!important}
 
 /* top-centre button row: four equal buttons */
-body.touch-mode #btnFS{left:calc(50% - 92px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:16px}
-body.touch-mode #btnPause{left:calc(50% - 44px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px}
-body.touch-mode #btnMute{left:calc(50% + 4px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:10px}
-body.touch-mode #btnSet{left:calc(50% + 52px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:18px}
+body.touch-mode #btnFS{left:calc(50% - 116px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:16px}
+body.touch-mode #btnPause{left:calc(50% - 68px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px}
+body.touch-mode #btnMute{left:calc(50% - 20px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:10px}
+body.touch-mode #btnSet{left:calc(50% + 28px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:18px}
 
 /* action buttons: neat arc around FIRE */
 body.touch-mode .tbtn{font-size:11px;opacity:.92;-webkit-tap-highlight-color:transparent}
@@ -218,6 +218,7 @@ body.touch-mode #btnNade{right:calc(43px + env(safe-area-inset-right,0px));botto
 body.touch-mode #btnSwap{right:calc(107px + env(safe-area-inset-right,0px));bottom:calc(130px + env(safe-area-inset-bottom,0px));width:54px;height:54px}
 body.touch-mode #btnZoom{right:calc(176px + env(safe-area-inset-right,0px))!important;bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;width:54px!important;height:54px!important;font-size:11px!important}
 
+body.touch-mode #btnJump{right:calc(200px + env(safe-area-inset-right,0px));bottom:calc(34px + env(safe-area-inset-bottom,0px));width:56px;height:56px}
 /* buttons, prompts and messages */
 body.touch-mode .btn{padding:10px 18px;font-size:16px}
 body.touch-mode .talkbtn{bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:9px 18px;font-size:15px}
@@ -287,7 +288,7 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
         <div class="val" id="score">0</div>
         <div class="sub" id="comboTxt">Best 0</div>
       </div>
-      <canvas id="radar" width="112" height="112"></canvas>
+      
     </div>
   </div>
   <div class="row bottom">
@@ -302,7 +303,7 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
     </div>
   </div>
 </div>
-<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · Tab weapon wheel · Z or right click scope · G grenade · E talk / gate / van · O settings</div>
+<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · Tab weapon wheel · Z or right click scope · G grenade · Space jump · E talk / gate / van · O settings</div>
 
 <div class="tc" id="tc" hidden>
   <div id="lookZone"></div>
@@ -315,6 +316,7 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
   <button class="tbtn" id="btnMap" type="button">MAP</button>
   <button class="tbtn" id="btnNade" type="button">&#128163;</button>
   <button class="tbtn" id="btnSwap" type="button">SWAP</button>
+  <button class="tbtn" id="btnJump" type="button">JUMP</button>
   <button class="tbtn" id="btnFS" type="button" aria-label="Fullscreen">&#9974;</button>
   <button class="tbtn" id="btnSet" type="button" aria-label="Settings">&#9881;</button>
 </div>
@@ -371,12 +373,13 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
       <dt><kbd>Mouse</kbd></dt><dd>Aim. Click to fire. Headshots hit three times harder.</dd>
       <dt><kbd>Tab</kbd></dt><dd>Press to open the weapon wheel, press again to close. Move the mouse to a slot and click, or press <kbd>1</kbd>-<kbd>5</kbd>.</dd>
       <dt><kbd>E</kbd></dt><dd>Talk, work the gate lever, climb the tower, drive or leave the van.</dd>
-      <dt><kbd>R</kbd></dt><dd>Reload. <kbd>Esc</kbd> pauses, <kbd>M</kbd> opens the map, <kbd>N</kbd> mutes.</dd>
+      <dt><kbd>R</kbd></dt><dd>Reload. <kbd>Space</kbd> jumps, <kbd>Esc</kbd> pauses, <kbd>M</kbd> opens the map, <kbd>N</kbd> mutes.</dd>
     </dl>
     <dl class="keys touch-only s-menu s-pause">
       <dt>Left thumb</dt><dd>Drag anywhere on the left to move (or drive).</dd>
       <dt>Right thumb</dt><dd>Drag to aim. Hold FIRE and slide it to aim while shooting.</dd>
       <dt>SWAP</dt><dd>Opens the weapon wheel. Tap a slot.</dd>
+      <dt>JUMP / MAP</dt><dd>JUMP hops. MAP shows the whole island.</dd>
     </dl>
 
     <div class="btns">
@@ -442,7 +445,7 @@ var TEST_MODE=true; /* set to false for normal play */
 var S={mode:'menu',wave:0,score:0,kills:0,hp:100,maxHp:100,mag:12,magSize:12,reserve:60,reload:0,fireCd:0,
   combo:0,comboT:0,toSpawn:0,spawnT:0,spawnGap:1,maxAlive:14,waveGap:0,forceBrutes:0,best:0,time:0,day:0,zin:false};
 try{S.best=+localStorage.getItem('zombieOoruBest')||0;}catch(e){}
-var P={x:0,z:24,yaw:0,pitch:0,bob:0,shake:0,kick:0,hurt:0,lookT:-9};
+var P={x:0,z:24,yaw:0,pitch:0,bob:0,shake:0,kick:0,hurt:0,lookT:-9,jy:0,vy:0,jr:false};
 var CFG={music:60,sfx:100,sens:100,diff:1,track:'auto'};
 try{Object.assign(CFG,JSON.parse(localStorage.getItem('zombieOoruCfg')||'{}'));}catch(e){}
 var DF=[{hp:.7,sp:.85,dm:.7},{hp:1,sp:1,dm:1},{hp:1.4,sp:1.2,dm:1.4}];
@@ -1298,24 +1301,6 @@ function hudUpdate(){
   el.ammo.classList.toggle('empty',S.mag===0);
   setT('rld',el.rld,S.reload>0?'reloading…':'');
 }
-var radar=$('radar'),rctx=radar.getContext('2d');
-function drawRadar(){
-  var W=radar.width,c=W/2,range=(P.y>1?70:42),sc=(c-6)/range;
-  rctx.clearRect(0,0,W,W);
-  rctx.strokeStyle='rgba(244,236,216,.25)';rctx.lineWidth=1;
-  rctx.beginPath();rctx.arc(c,c,c-4,0,6.2832);rctx.stroke();rctx.beginPath();rctx.arc(c,c,(c-4)/2,0,6.2832);rctx.stroke();
-  var fx2=-Math.sin(P.yaw),fz2=-Math.cos(P.yaw),rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw);
-  function dot(x,z,col,r){
-    var dx=x-P.x,dz=z-P.z,px=dx*rx+dz*rz,pf=dx*fx2+dz*fz2,d=Math.hypot(px,pf);
-    if(d>range){px*=range/d;pf*=range/d;}
-    rctx.fillStyle=col;rctx.beginPath();rctx.arc(c+px*sc,c-pf*sc,r,0,6.2832);rctx.fill();
-  }
-  pickups.forEach(function(p){dot(p.x,p.z,'#f2b01e',2.5);});
-  dot(OP.x,OP.z,'#79bf5a',4.5);dot(0,-58,'#f4ecd8',3.5);
-  if(islCache.SPOTS)islCache.SPOTS.forEach(function(pl){dot(pl.x,pl.z,pl.c,pl.big?5:3);});
-  Z.forEach(function(z){dot(z.x,z.z,z.type==='brute'?'#ff7a2a':'#d9382a',z.type==='brute'?4.5:3);});
-  rctx.fillStyle='#f4ecd8';rctx.beginPath();rctx.moveTo(c,c-6);rctx.lineTo(c-4,c+4);rctx.lineTo(c+4,c+4);rctx.closePath();rctx.fill();
-}
 var annT=0;
 function announce(ta,en,ms){
   $('banTa').textContent=ta;$('banEn').textContent=en;$('banner').classList.add('show');
@@ -1355,7 +1340,7 @@ function resetGame(){
   S.wave=0;S.score=0;S.kills=0;S.hp=S.maxHp;S.mag=S.magSize;S.reserve=60;S.wpn=0;S.own=[true,false,false,false,false,false,false];S.mags=[12,0,0,0,0,0,0];S.magSize=12;S.zoom=false;S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;S.reload=0;S.fireCd=0;S.combo=0;S.comboT=0;
   S.toSpawn=0;S.waveGap=2.6;S.time=0;S.forceBrutes=0;S.zin=false;
   if(TEST_MODE){S.own=W.map(function(){return true;});S.mags=W.map(function(w){return w.mag;});S.wpn=0;S.magSize=W[0].mag;S.mag=S.mags[0];S.reserve=999;S.nades=5;S.cash=9999;}
-  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;S.opWave=-1;opWant=0;opO=0;OPLEV.forEach(function(l){l.en='Open outpost gate';});towerReset();campReset();islReset();
+  P.jy=0;P.vy=0;P.jr=false;P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;S.opWave=-1;opWant=0;opO=0;OPLEV.forEach(function(l){l.en='Open outpost gate';});towerReset();campReset();islReset();
   Object.keys(cache).forEach(function(k){delete cache[k];});
 }
 function startGame(){
@@ -1575,6 +1560,8 @@ function update(dt){
     towerStep(dt);
   }
   vanStep(dt);
+  if(P.jr){P.jr=false;if(P.jy<=0.001&&!VAN.drive&&!S.shop)P.vy=7.4;}
+  if(VAN.drive){P.jy=0;P.vy=0;}else if(P.jy>0||P.vy>0){P.vy-=22*dt;P.jy+=P.vy*dt;if(P.jy<=0){P.jy=0;P.vy=0;}}
   var moving=mag>0.1&&!VAN.drive;P.bob+=dt*(moving?(sprint?13:9):0);
   if(S.fireCd>0)S.fireCd-=dt;
   if(S.reload>0){S.reload-=dt;if(S.reload<=0){S.reload=0;var cst=W[S.wpn].cost||1,need=S.magSize-S.mag,take=Math.min(need,Math.floor(S.reserve/cst));S.mag+=take;S.reserve-=take*cst;}}
@@ -1687,6 +1674,7 @@ function updateCamera(){
   var zm=!!(S.zoom&&W[S.wpn].zoom&&!VAN.drive&&S.mode==='play'),tf=zm?24:72;
   if(Math.abs(camera.fov-tf)>0.2){camera.fov+=(tf-camera.fov)*0.25;camera.updateProjectionMatrix();}
   gun.visible=!VAN.drive&&!zm;scopeEl.style.display=zm?'block':'none';
+  var zb=document.getElementById('btnZoom');if(zb)zb.hidden=!(W[S.wpn].zoom&&!VAN.drive);
   var sh=P.shake*0.03;
   if(VAN.drive){
     var pc=Math.cos(P.pitch),dist=9,lx=-Math.sin(P.yaw)*pc,ly=Math.sin(P.pitch),lz=-Math.cos(P.yaw)*pc;
@@ -1694,7 +1682,7 @@ function updateCamera(){
     camera.rotation.set(P.pitch+(Math.random()-0.5)*sh,P.yaw+(Math.random()-0.5)*sh,0,'YXZ');
     return;
   }
-  camera.position.set(P.x,EYE+(P.y||0)+Math.sin(P.bob)*0.045,P.z);
+  camera.position.set(P.x,EYE+(P.y||0)+(P.jy||0)+Math.sin(P.bob)*0.045,P.z);
   camera.rotation.set(P.pitch+(Math.random()-0.5)*sh,P.yaw+(Math.random()-0.5)*sh,0,'YXZ');
 }
 
@@ -1766,13 +1754,13 @@ window.addEventListener('keydown',function(e){
     if(e.code==='KeyO'){pause();openSettings();return;}
     if(e.code==='KeyZ'&&W[S.wpn].zoom)S.zoom=!S.zoom;if(e.code==='KeyR')startReload();if(e.code==='KeyG')throwNade();if(e.code==='KeyE')talk();if(e.code==='KeyQ')cycleWpn();
     var dg=/^Digit([1-7])$/.exec(e.code);if(dg)switchWpn(+dg[1]-1);
-    if(e.code==='Space'){firing=true;}
+    if(e.code==='Space'&&!e.repeat)P.jr=true;
     if((e.code==='KeyP'||(e.code==='Escape'&&!document.pointerLockElement))){pause();}
     if(/^(Space|Arrow(Up|Down|Left|Right))$/.test(e.code))e.preventDefault();
   }
   keys[e.code]=true;
 });
-window.addEventListener('keyup',function(e){keys[e.code]=false;if(e.code==='Space')firing=false;});
+window.addEventListener('keyup',function(e){keys[e.code]=false;});
 window.addEventListener('blur',function(){if(S.mode==='play')pause();});
 var mouseDown=false,dragMoved=0;
 canvas.addEventListener('mousedown',function(e){
@@ -2464,6 +2452,7 @@ $('shopItems').addEventListener('click',function(e){
   var it=ITEMS[+b.dataset.i];if(S.cash>=it.c&&it.f()){S.cash-=it.c;sfxPickup();}renderShop();
 });
 $('btnNade').addEventListener('pointerdown',function(e){e.preventDefault();throwNade();});
+$('btnJump').addEventListener('pointerdown',function(e){e.preventDefault();P.jr=true;});
 $('btnSwap').addEventListener('pointerdown',function(e){e.preventDefault();if(WHL.open)wheelClose(false);else wheelOpen(true);});
 /* sniper scope: Z key, right mouse button, or the ZOOM button on touch */
 var scopeEl=document.createElement('div');
@@ -2472,7 +2461,7 @@ scopeEl.innerHTML='<div style="position:absolute;left:0;right:0;top:50%;height:1
 document.body.appendChild(scopeEl);
 canvas.addEventListener('mousedown',function(e){if(e.button===2&&S.mode==='play'&&W[S.wpn].zoom)S.zoom=!S.zoom;});
 (function(){
-  var b=document.createElement('button');b.className='tbtn';b.id='btnZoom';b.type='button';b.textContent='ZOOM';
+  var b=document.createElement('button');b.className='tbtn';b.id='btnZoom';b.type='button';b.textContent='ZOOM';b.hidden=true;
   b.style.cssText='right:calc(184px + env(safe-area-inset-right,0px));bottom:calc(104px + env(safe-area-inset-bottom,0px));width:62px;height:62px;font-size:12px';
   b.addEventListener('pointerdown',function(e){e.preventDefault();if(W[S.wpn].zoom)S.zoom=!S.zoom;});
   $('tc').appendChild(b);
@@ -2668,8 +2657,7 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
   var lake=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(lakePts)),new THREE.MeshLambertMaterial({map:lakeTex,color:0x66b8e8,emissive:0x0a3a66}));lake.rotation.x=-Math.PI/2;lake.position.y=0.05;scene.add(lake);
   /* lake is blocked by a ring of colliders (pier gap on the west shore) */
   for(i=0;i<56;i++){var a=i/56*6.2832,cx=LAKE.x+Math.cos(a)*LAKE.rx*0.97,cz=LAKE.z+Math.sin(a)*LAKE.rz*0.97;if(cx<44&&Math.abs(cz-LAKE.z)<4.2)continue;addCol(cx,cz,2.8,1);}
-  for(i=0;i<40;i++){var a2=i/40*6.2832;addCol(LAKE.x+Math.cos(a2)*LAKE.rx*0.62,LAKE.z+Math.sin(a2)*LAKE.rz*0.62,5,1);}
-  addCol(LAKE.x,LAKE.z,8,1);addCol(LAKE.x-14,LAKE.z,6,1);addCol(LAKE.x+14,LAKE.z,6,1);
+  for(var lgx=-28;lgx<=28;lgx+=4)for(var lgz=-20;lgz<=20;lgz+=4){var lnx=lgx/(LAKE.rx*0.9),lnz=lgz/(LAKE.rz*0.9);if(lnx*lnx+lnz*lnz>1)continue;if(lgz===0&&LAKE.x+lgx<56)continue;addCol(LAKE.x+lgx,LAKE.z+lgz,2.6,1);}
 
   /* ---- roads and paths ---- */
   var roadMat=lam(0x3f382e),pathMat=lam(0x6b5a40),dashMat=bas(0xcfc6a6);
@@ -2703,6 +2691,15 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
   function beam(x,z,col,h,op){
     var m=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,h,10,1,true),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op||0.2,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,side:THREE.DoubleSide}));
     m.position.set(x,h/2,z);m.raycast=function(){};scene.add(m);glow(x,0.4,z,5,col,0.6);return m;
+  }
+  var SPOTPOS={},RINGS=[];
+  function spotAt(id,x,z,col,h,y){
+    SPOTPOS[id]={x:x,z:z};beam(x,z,col,h||34,0.2);
+    [[0,2.5,0.18],[1.9,2.6,0.6]].forEach(function(r){
+      var g=r[0]?new THREE.RingGeometry(r[0],r[1],40):new THREE.CircleGeometry(r[1],40);
+      var m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:r[2],blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+      m.rotation.x=-Math.PI/2;m.position.set(x,y||0.08,z);m.userData.o=r[2];m.raycast=function(){};scene.add(m);RINGS.push(m);
+    });
   }
   var ICON={};
   function iconTex(kind){
@@ -2768,9 +2765,9 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     for(i=0;i<9;i++){var ang=-0.2+i*0.25;box(1.3,0.6,0.6,lam(0xb8a070),P0.x+Math.sin(ang)*6,0.3,P0.z+Math.cos(ang)*6+2,scene);}
     lamp(P0.x+5,P0.z+11);lamp(P0.x-6,P0.z+11);
     for(i=0;i<7;i++)rock(P0.x-14+r2()*34,P0.z-6-r2()*10,1.6+r2()*2.4);
-    beam(P0.x,P0.z,0xf2b01e,70,0.16);
-    pin('mission',P0.x,P0.z,H+14);label('RADIO TOWER',P0.x,H+19,P0.z,'mission');
-    ipoint({id:'radio',x:P0.x+3.2,z:P0.z+3.2,en:'Use radio',talk:function(){speak('Radio','The radio crackles. Keep holding the island.');}});
+    spotAt('radio',P0.x+1,P0.z+6.5,0xf2b01e,70);
+    
+    ipoint({id:'radio',x:P0.x+1,z:P0.z+6.5,en:'Use radio',talk:function(){speak('Radio','The radio crackles. Keep holding the island.');}});
   })();
 
   /* ================= FOREST CAMP (safe house) ================= */
@@ -2782,7 +2779,7 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     crate(P0.x+9,P0.z+4,0x8a6a3a);crate(P0.x+10.6,P0.z+4.4,0x7a5a2a);
     lamp(P0.x-12,P0.z+4);lamp(P0.x+12,P0.z-1);
     for(i=0;i<8;i++){var a=i/8*6.2832;box(0.25,2.2,0.25,lam(0x5a3d22),P0.x+Math.cos(a)*15,1.1,P0.z+Math.sin(a)*15,scene);}
-    beam(P0.x,P0.z,0x3ddc6b,34,0.14);pin('safe',P0.x,P0.z,9);label('FOREST CAMP',P0.x,13.5,P0.z,'safe');
+    spotAt('forest',P0.x+1.5,P0.z+3,0x3ddc6b,34);
     ipoint({id:'forest',x:P0.x+1.5,z:P0.z+3,en:'Rest at safe house',talk:function(){
       if(usedNow('forest')){speak('Forest Camp','The fire is low. Come back after the next wave.');return;}
       if(S.hp>=S.maxHp-4){speak('Forest Camp','You look fine. Rest here when you are hurt.');return;}
@@ -2807,18 +2804,18 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     for(i=0;i<5;i++)addCol(P0.x-26+i*5,P0.z+24,0.7,2);for(i=0;i<5;i++)addCol(P0.x+4+i*5,P0.z+24,0.7,2);
     flame(P0.x-18,0.2,P0.z+16,1.4,scene);addCol(P0.x-18,P0.z+16,0.8,1);
     lamp(P0.x-4,P0.z+20);lamp(P0.x+6,P0.z+20);
-    pin('horde',P0.x,P0.z,18);label('ABANDONED FACTORY',P0.x,24,P0.z,'horde');
+    
   })();
 
   /* ================= LAKE DOCK (supply drop) ================= */
   (function(){
     var wood=lam(0x7a5a38,0x140c06),px0=LAKE.x-31,pz=LAKE.z;
     for(i=0;i<19;i++){box(0.9,0.14,3.4,wood,px0+i*1.0,0.22,pz,scene);}
-    [-1.6,1.6].forEach(function(s){for(var q=0;q<10;q++){box(0.22,0.9,0.22,wood,px0+q*2,0.5,pz+s,scene);addCol(px0+q*2,pz+s*1.25,0.55,1);}box(19,0.1,0.12,wood,px0+9,0.9,pz+s,scene);});
+    [-1.6,1.6].forEach(function(s){for(var q=0;q<10;q++){box(0.22,0.9,0.22,wood,px0+q*2,0.5,pz+s,scene);addCol(px0+q*2,pz+s*1.6,0.3,1);}box(19,0.1,0.12,wood,px0+9,0.9,pz+s,scene);});
     addCol(px0+19.2,pz,1.8,1);
     var bt=new THREE.Group();bt.position.set(px0+9,0.1,pz-9);bt.rotation.y=0.3;scene.add(bt);box(1.8,0.6,4.6,lam(0xb8442c),0,0.35,0,bt);box(1.5,0.1,3.6,lam(0xd8c8a0),0,0.68,0,bt);islCache.boat=bt;
     var sx=px0+18,sz=pz;crate(sx,sz,0x33c4ff);
-    beam(sx,sz,0x33c4ff,30,0.18);pin('supply',sx,sz,8);label('LAKE DOCK',sx,12.5,sz,'supply');
+    spotAt('dock',sx-2.4,sz,0x33c4ff,30,0.34);
     lamp(px0+3,pz-2.6);
     ipoint({id:'dock',x:sx-2.4,z:sz,en:'Open supply drop',talk:function(){
       if(usedNow('dock')){speak('Supply Drop','Empty. A new drop lands every wave.');return;}
@@ -2840,7 +2837,7 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     var tw=new THREE.Mesh(new THREE.CylinderGeometry(1.0,2.0,11,8),lam(0xc9c0a8,0x14120c));tw.position.y=5.5;wm.add(tw);box(2.6,1.4,2.6,lam(0x6a3a2a),0,11.4,0,wm);
     var hub=new THREE.Group();hub.position.set(0,11.4,1.6);wm.add(hub);for(i=0;i<4;i++){var bl=new THREE.Mesh(new THREE.BoxGeometry(0.5,5.4,0.1),lam(0xe8dcc0));bl.position.y=2.9;var arm=new THREE.Group();arm.rotation.z=i*Math.PI/2;arm.add(bl);hub.add(arm);}islCache.blades=hub;addCol(110,50,2.2,11);
     lamp(P0.x-6,P0.z-2);lamp(P0.x+6,P0.z+2);
-    beam(P0.x,P0.z,0xf2b01e,40,0.15);pin('mission',P0.x,P0.z,9);label('FARM ZONE',P0.x,13.5,P0.z,'mission');
+    spotAt('farm',P0.x,P0.z+3,0xf2b01e,40);
     ipoint({id:'farm',x:P0.x,z:P0.z+3,en:'Search the farm',talk:function(){
       if(!usedNow('farm')){ISLS.used.farm=S.wave;S.reserve+=30;S.cash+=40;sfxPickup();speak('Farm Zone','Some ammo and food in the barn. +30 ammo, +40 cash.');}
       else speak('Farm Zone','You already searched here this wave.');
@@ -2859,7 +2856,7 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     var amb=new THREE.Group();amb.position.set(P0.x-4,0,P0.z+13);scene.add(amb);box(3.8,1.6,1.8,lam(0xf4f4f4),0,0.9,0,amb);box(1.4,1.1,1.78,lam(0xdde0e6),1.4,0.8,0,amb);box(1.2,0.4,0.1,bas(0xd9382a),-0.4,1.1,0.92,amb);box(0.4,0.4,0.1,bas(0xff3a2a),0,1.85,0,amb);addCol(P0.x-4,P0.z+13,2.0,2);
     glow(P0.x-4,2.1,P0.z+13,4,0xff3a2a,0.7);
     lamp(P0.x+8,P0.z+12);lamp(P0.x-10,P0.z+12);
-    pin('horde',P0.x,P0.z,17);label('HOSPITAL',P0.x,22,P0.z,'horde');
+    spotAt('hosp',P0.x-4,P0.z+10,0xf2b01e,40);
     ipoint({id:'hosp',x:P0.x-4,z:P0.z+10,en:'Search medical supplies',talk:function(){
       if(usedNow('hosp')){speak('Hospital','Cabinets are empty this wave.');return;}
       if(S.hp>=S.maxHp-4){speak('Hospital','You are fine. Medical supplies are here when you need them.');return;}
@@ -2877,7 +2874,7 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     l1.position.set(-0.5,5.7,0);l2.position.set(0.5,5.7,0);b.add(l1);b.add(l2);islCache.pl1=l1;islCache.pl2=l2;
     [[P0.x+12,P0.z+8,0.4],[P0.x+16,P0.z+6,-0.3]].forEach(function(p){var c=new THREE.Group();c.position.set(p[0],0,p[1]);c.rotation.y=p[2];scene.add(c);box(1.9,0.7,4.2,lam(0xf4f4f4),0,0.75,0,c);box(1.7,0.6,2.2,lam(0x1a2a4a),0,1.4,-0.2,c);box(1.92,0.25,1.5,lam(0x1a1a22),0,0.7,0.3,c);addCol(p[0],p[1],1.4,2);});
     lamp(P0.x+9,P0.z+5);lamp(P0.x-9,P0.z+5);
-    beam(P0.x,P0.z+8,0x3ddc6b,30,0.14);pin('safe',P0.x,P0.z+8,9);label('POLICE STATION',P0.x,13.5,P0.z+8,'safe');
+    spotAt('police',P0.x+4,P0.z+6.5,0x3ddc6b,30);
     ipoint({id:'police',x:P0.x+4,z:P0.z+6.5,en:'Rest at safe house',talk:function(){
       if(usedNow('police')){speak('Police Station','Quiet for now. Come back after the next wave.');return;}
       if(S.hp>=S.maxHp-4){speak('Police Station','You look fine. The cells are safe if you need a rest.');return;}
@@ -2893,7 +2890,7 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
     campfire(P0.x,P0.z,1);var fl=new THREE.PointLight(0xff9a3c,1.0,24);fl.position.set(P0.x,2,P0.z);scene.add(fl);
     var bt=new THREE.Group();bt.position.set(P0.x+13,0.2,P0.z+7);bt.rotation.y=0.9;scene.add(bt);box(1.7,0.7,4.8,lam(0x2a5a8a),0,0.4,0,bt);box(1.5,0.1,3.8,lam(0xd8c8a0),0,0.78,0,bt);addCol(P0.x+13,P0.z+7,2.4,1);
     var sx=P0.x+7,sz=P0.z+3;crate(sx,sz,0x33c4ff);
-    beam(sx,sz,0x33c4ff,30,0.18);pin('supply',sx,sz,8);label('BEACH CAMP',sx,12.5,sz,'supply');
+    spotAt('beach',sx-2.4,sz,0x33c4ff,30);
     lamp(P0.x-10,P0.z+2);
     ipoint({id:'beach',x:sx-2.4,z:sz,en:'Open supply drop',talk:function(){
       if(usedNow('beach')){speak('Supply Drop','Empty. A new drop lands every wave.');return;}
@@ -2902,8 +2899,8 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
   })();
 
   /* ================= MAIN VILLAGE + zombie hordes ================= */
-  pin('safe',0,-55,17);label('MAIN VILLAGE',0,22,-55,'safe');
-  HORDES.forEach(function(h){pin('horde',h.x,h.z,4.5);glow(h.x,0.5,h.z,14,0xff2a1a,0.35);});
+  
+  HORDES.forEach(function(h){glow(h.x,0.5,h.z,14,0xff2a1a,0.35);});
 
   /* ================= forest ================= */
   (function(){
@@ -2949,15 +2946,15 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
   var mArrow=mp.querySelector('#mArrow'),mTitle=mp.querySelector('#mTitle'),mSub=mp.querySelector('#mSub');
   var VAI={x:12.6,z:-57.2};
   var MIS=[
-    {t:'Find the Radio Tower',s:'Activate the signal to call for help.',x:LM.radio.x,z:LM.radio.z,type:'talk',id:'radio',reward:{c:300,s:500}},
-    {t:'Collect the supply drop',s:'Open the crate at Lake Dock.',x:LM.dock.x+16,z:LM.dock.z,type:'talk',id:'dock',reward:{a:40,c:100,s:300}},
-    {t:'Secure the Farm Zone',s:'Search the barn for supplies.',x:LM.farm.x,z:LM.farm.z,type:'talk',id:'farm',reward:{a:80,c:250,s:400}},
-    {t:'Find medicine',s:'Search the Hospital for medicine.',x:LM.hospital.x,z:LM.hospital.z,type:'talk',id:'hosp',reward:{c:100,s:300},done:function(){ISLS.medicine=true;}},
+    {t:'Find the Radio Tower',s:'Activate the signal to call for help.',x:SPOTPOS.radio.x,z:SPOTPOS.radio.z,type:'talk',id:'radio',reward:{c:300,s:500}},
+    {t:'Collect the supply drop',s:'Open the crate at Lake Dock.',x:SPOTPOS.dock.x,z:SPOTPOS.dock.z,type:'talk',id:'dock',reward:{a:40,c:100,s:300}},
+    {t:'Secure the Farm Zone',s:'Search the barn for supplies.',x:SPOTPOS.farm.x,z:SPOTPOS.farm.z,type:'talk',id:'farm',reward:{a:80,c:250,s:400}},
+    {t:'Find medicine',s:'Search the Hospital for medicine.',x:SPOTPOS.hosp.x,z:SPOTPOS.hosp.z,type:'talk',id:'hosp',reward:{c:100,s:300},done:function(){ISLS.medicine=true;}},
     {t:'Deliver the medicine',s:'Take it to the Vaidyar in the temple camp.',x:VAI.x,z:VAI.z,type:'talk',id:'vaidyar',reward:{h:100,c:200,s:500}},
     {t:'Clear the Factory',s:'Kill zombies near the Abandoned Factory.',x:LM.factory.x,z:LM.factory.z,type:'kills',n:12,r:55,reward:{a:100,c:400,s:800}},
-    {t:'Get the radio battery',s:'Search the Police Station.',x:LM.police.x+4,z:LM.police.z+8,type:'talk',id:'police',reward:{c:150,s:400},done:function(){ISLS.battery=true;}},
-    {t:'Boost the signal',s:'Install the battery at the Radio Tower.',x:LM.radio.x,z:LM.radio.z,type:'talk',id:'radio',need:'battery',needMsg:'The radio needs a battery. Search the Police Station.',reward:{c:300,s:700}},
-    {t:'Light the signal flare',s:'Reach Beach Camp and fire the flare.',x:LM.beach.x+7,z:LM.beach.z+3,type:'talk',id:'beach',reward:{a:60,c:300,s:800}},
+    {t:'Get the radio battery',s:'Search the Police Station.',x:SPOTPOS.police.x,z:SPOTPOS.police.z,type:'talk',id:'police',reward:{c:150,s:400},done:function(){ISLS.battery=true;}},
+    {t:'Boost the signal',s:'Install the battery at the Radio Tower.',x:SPOTPOS.radio.x,z:SPOTPOS.radio.z,type:'talk',id:'radio',need:'battery',needMsg:'The radio needs a battery. Search the Police Station.',reward:{c:300,s:700}},
+    {t:'Light the signal flare',s:'Reach Beach Camp and fire the flare.',x:SPOTPOS.beach.x,z:SPOTPOS.beach.z,type:'talk',id:'beach',reward:{a:60,c:300,s:800}},
     {t:'Hold until rescue',s:'Survive the zombies until the boat arrives.',x:null,z:null,type:'wave',wave:8}
   ];
   function completeM(m){
@@ -3046,19 +3043,23 @@ function usedNow(id){return ISLS.used[id]===S.wave;}
   islCache.toggleMap=toggleMap;islCache.MIS=MIS;
   mapEl.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();toggleMap(false);});
   var mbtn=document.getElementById('btnMap');if(mbtn)mbtn.addEventListener('pointerdown',function(e){e.stopPropagation();toggleMap();});
-  var lastT='',lastS='';
+  var lastT='',lastS='',inSpot={},lastMi=-1;
   islCache.fx=function(t,dt){
     if(islCache.blades)islCache.blades.rotation.z+=dt*0.9;
     waveTex.offset.set(t*0.004,t*0.0025);lakeTex.offset.set(-t*0.002,t*0.0012);
     if(islCache.beacon){var on=((t*1.2)%2)<0.35;islCache.beacon.visible=on;islCache.beaconGlow.visible=on;islCache.beaconLight.intensity=on?1.2:0;}
     if(islCache.pl1){var ph=Math.floor(t*4)%2===0;islCache.pl1.visible=ph;islCache.pl2.visible=!ph;}
     if(islCache.boat)islCache.boat.position.y=0.06+Math.sin(t*1.3)*0.05;
+    for(var rq=0;rq<RINGS.length;rq++)RINGS[rq].material.opacity=RINGS[rq].userData.o*(0.7+0.3*Math.sin(t*3+rq));
     var px=P.x,pz=P.z,q;
     for(q=0;q<labels.length;q++){var L=labels[q],dd=Math.hypot(L.x-px,L.z-pz);L.s.visible=dd<95&&dd>6;var sc=Math.max(0.55,Math.min(1.3,dd/60));L.s.scale.set(16*sc,3.5*sc,1);}
     for(q=0;q<pins.length;q++){var Pn=pins[q],d2=Math.hypot(Pn.x-px,Pn.z-pz);Pn.s.visible=d2<160&&d2>5;var ps=Math.max(0.8,Math.min(2.2,d2/45))*4.2;Pn.s.scale.set(ps,ps,1);Pn.s.position.y=Pn.y+Math.sin(t*2+q)*0.25;}
     if(islCache.mapOpen){if(S.mode!=='play')toggleMap(false);else drawMap(t);}
     var mm=MIS[ISLS.mi];
     if(mm&&mm.type==='wave'&&S.mode==='play'&&!S.shop&&S.wave>=mm.wave&&S.toSpawn<=0&&Z.length===0&&S.waveGap>0){S.score+=2000;islCache.mapOpen&&toggleMap(false);gameOver('Rescued! The island is saved','ஊர் காப்பாற்றப்பட்டது');return;}
+    if(ISLS.mi!==lastMi){inSpot={};lastMi=ISLS.mi;}
+    var am=MIS[ISLS.mi];
+    if(am&&am.type==='talk'&&SPOTPOS[am.id]&&S.mode==='play'&&!S.shop&&!islCache.mapOpen){var spp=SPOTPOS[am.id],ins=Math.hypot(P.x-spp.x,P.z-spp.z)<2.8;if(ins&&!inSpot[am.id]){inSpot[am.id]=true;islCache.missionTalk(am.id);}else if(!ins)inSpot[am.id]=false;}
     var show=S.mode==='play'&&!S.shop&&!islCache.mapOpen;mp.hidden=!show;
     if(show){
       var m=MIS[ISLS.mi],tt=m.t,ss=m.s;
@@ -3083,7 +3084,7 @@ function frame(){
   var dt=Math.min(clock.getDelta(),0.05)*(WHL.open?0.2:(islCache.mapOpen?0.03:1));frameN++;
   if(S.mode==='play'&&!S.shop){
     update(dt);updateCamera();
-    if(frameN%3===0)drawRadar();
+    
     hudUpdate();
   }else if(S.mode==='menu'){
     var t=performance.now()/1000;
