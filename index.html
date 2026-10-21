@@ -173,6 +173,72 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
 }
 @media (prefers-reduced-motion:reduce){.banner,.hp i{transition:none}.pop.go{animation-duration:.01s}}
 </style>
+<style id="mobile-layout">
+/* ===== NEAT MOBILE LAYOUT (touch devices only) ===== */
+body.touch-mode .cine::after{display:none}
+body.touch-mode .panel-h{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(11,14,43,.62);border-radius:7px;padding:5px 9px;box-shadow:none}
+body.touch-mode .lbl{font-size:10px;gap:5px}
+body.touch-mode .lbl b{font-size:11px}
+body.touch-mode .val{font-size:24px;text-shadow:0 1px 0 rgba(0,0,0,.5)}
+body.touch-mode .val small{font-size:13px}
+body.touch-mode .sub{font-size:10.5px}
+body.touch-mode .right{gap:6px}
+body.touch-mode #radar{width:78px;height:78px}
+body.touch-mode .hp{width:132px;height:9px;margin-top:4px}
+body.touch-mode .row.bottom{justify-content:flex-start}
+
+/* ammo + weapon pill: bottom centre, clear of the thumbs */
+body.touch-mode .hud .ammo{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(8px + env(safe-area-inset-bottom,0px));text-align:center!important;min-width:150px;padding:3px 14px}
+body.touch-mode .ammo .lbl{justify-content:center!important}
+
+/* top-centre button row: four equal buttons */
+body.touch-mode #btnFS{left:calc(50% - 92px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:16px}
+body.touch-mode #btnPause{left:calc(50% - 44px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px}
+body.touch-mode #btnMute{left:calc(50% + 4px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:10px}
+body.touch-mode #btnSet{left:calc(50% + 52px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:18px}
+
+/* action buttons: neat arc around FIRE */
+body.touch-mode .tbtn{font-size:11px;opacity:.92;-webkit-tap-highlight-color:transparent}
+body.touch-mode .tbtn:active{background:rgba(242,176,30,.5);transform:scale(.94)}
+body.touch-mode #btnFire{right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:100px;height:100px;font-size:15px}
+body.touch-mode #btnReload{right:calc(132px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));width:58px;height:58px}
+body.touch-mode #btnNade{right:calc(43px + env(safe-area-inset-right,0px));bottom:calc(136px + env(safe-area-inset-bottom,0px));width:54px;height:54px;font-size:22px}
+body.touch-mode #btnSwap{right:calc(107px + env(safe-area-inset-right,0px));bottom:calc(130px + env(safe-area-inset-bottom,0px));width:54px;height:54px}
+body.touch-mode #btnZoom{right:calc(176px + env(safe-area-inset-right,0px))!important;bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;width:54px!important;height:54px!important;font-size:11px!important}
+
+/* buttons, prompts and messages */
+body.touch-mode .btn{padding:10px 18px;font-size:16px}
+body.touch-mode .talkbtn{bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:9px 18px;font-size:15px}
+body.touch-mode .say{bottom:calc(128px + env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 470px));min-width:240px;padding:8px 12px}
+body.touch-mode .say span{font-size:13px}
+body.touch-mode .banner{top:16%}
+body.touch-mode .banner .ta{font-size:clamp(26px,5.5vw,42px)}
+body.touch-mode .banner .en{font-size:11px}
+body.touch-mode .pop{top:56%}
+body.touch-mode .pop .ta{font-size:clamp(30px,6vw,48px)}
+
+/* shop: two neat columns */
+body.touch-mode .shopbox{gap:6px;padding:10px}
+body.touch-mode .shopbox h2{font-size:20px}
+body.touch-mode .shopbox .items{grid-template-columns:1fr 1fr;width:min(620px,100%);gap:6px}
+body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
+
+/* short screens (phones in landscape): compact menus and settings */
+@media (max-height:500px){
+  .screen{padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px))}
+  .screen .col{gap:8px}
+  h1 .en{font-size:28px}
+  h1 .ta{font-size:32px;margin-top:0}
+  .lead{font-size:12.5px;line-height:1.4}
+  .eyebrow{font-size:10px}
+  .keys{font-size:12px;gap:4px 10px}
+  .stats dd{font-size:22px}
+  .stats{gap:6px 18px}
+  .setcard{gap:8px}
+  .setcard h2{font-size:22px}
+  .setgrid{gap:8px 10px;font-size:13px}
+}
+</style>
 </head><body>
 
 <div id="stage"></div>
