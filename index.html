@@ -209,7 +209,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
     </div>
   </div>
 </div>
-<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · 1-3/Q weapons · G grenade · E talk / gate / van · O settings</div>
+<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · 1-7/Q weapons · Z or right click scope · G grenade · E talk / gate / van · O settings</div>
 
 <div class="tc" id="tc" hidden>
   <div id="lookZone"></div>
@@ -261,7 +261,7 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
     <h1 class="s-pause"><span class="en">Paused</span><span class="ta">இடைவேளை</span></h1>
     <h1 class="s-over"><span class="en" id="overEn">The village fell</span><span class="ta" id="overTa">ஊர் வீழ்ந்தது</span></h1>
 
-    <p class="lead s-menu">The dead have walked out of the paddy fields and into Sengattupatti. The tea kadai is dark, the lamps are swinging, and only the old gopuram is still standing. The temple courtyard is your camp, with survivors, a store and a safe place to heal. Work the gate lever with E: an open gate lets you drive the village van out, but it lets the dead walk in too. If any villager dies, the village falls.</p>
+    <p class="lead s-menu">The dead have walked out of the paddy fields and into Sengattupatti. The tea kadai is dark, the lamps are swinging, and only the old gopuram is still standing. The temple courtyard is your camp, with survivors, a store and a safe place to heal. The village van is parked in the Outpost camp, far down the road. Work the gate levers with E: an open gate lets the dead walk in. If any villager dies, the village falls.</p>
     <p class="lead s-pause">Take a breath. The village is still standing.</p>
 
     <dl class="stats s-over">
@@ -308,6 +308,7 @@ if(!window.THREE){$('menuErr').hidden=false;return;}
 
 /* ---------- state ---------- */
 var RELOAD_T=1.3, WB=88, EYE=1.7;
+var TEST_MODE=true; /* set to false for normal play */
 var S={mode:'menu',wave:0,score:0,kills:0,hp:100,maxHp:100,mag:12,magSize:12,reserve:60,reload:0,fireCd:0,
   combo:0,comboT:0,toSpawn:0,spawnT:0,spawnGap:1,maxAlive:14,waveGap:0,forceBrutes:0,best:0,time:0,day:0,zin:false};
 try{S.best=+localStorage.getItem('zombieOoruBest')||0;}catch(e){}
@@ -986,7 +987,7 @@ function sfxTone(freq,dur,type,gain,end,delay){
   var g=AC.createGain();g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.02);
 }
-function sfxShoot(){if(playSnd('gun',1))return;sfxNoise(0.2,'lowpass',3800,0.95,260);sfxTone(190,0.13,'sine',0.7,48);}
+function sfxShoot(){var wr=(W[S.wpn]&&W[S.wpn].r)||1;if(playSnd('gun',1,wr))return;sfxNoise(0.2,'lowpass',3800,0.95,260);sfxTone(190,0.13,'sine',0.7,48);}
 function sfxHit(head){sfxNoise(0.09,'bandpass',520,0.5);sfxTone(120,0.09,'square',0.14,60);if(head)sfxTone(900,0.07,'triangle',0.22,1600);}
 var groanUntil=0;
 function sfxGroan(v){
@@ -1153,7 +1154,7 @@ function setH(k,node,v){if(cache[k]!==v){cache[k]=v;node.innerHTML=v;}}
 function hudUpdate(){
   setT('wave',el.wave,String(Math.max(S.wave,1)));
   var left=Z.length+S.toSpawn;
-  var campTxt=inTemple(P.x,P.z)?(S.zin?' \u00B7 ZOMBIES IN CAMP':' \u00B7 safe camp'):(inOP(P.x,P.z,0)?' \u00B7 outpost camp (safe)':'');
+  var campTxt=inTemple(P.x,P.z)?(S.zin?' \u00B7 ZOMBIES IN CAMP':' \u00B7 safe camp'):(inOP(P.x,P.z,0)?(opO>0.5?' \u00B7 outpost gate OPEN':' \u00B7 outpost camp (safe)'):'');
   var gateTxt=gateOpen>0.5?' \u00B7 gate OPEN':'';
   setT('left',el.left,(S.waveGap>0?((S.wave>0?'Next wave in ':'Get ready ')+Math.ceil(S.waveGap)+'s'):(left+' left'))+campTxt+gateTxt);
   setT('score',el.score,String(S.score));
@@ -1219,9 +1220,10 @@ document.addEventListener('pointerlockerror',function(){if(!everLocked)dragLook=
 
 function resetGame(){
   clearZombies();clearPickups();
-  S.wave=0;S.score=0;S.kills=0;S.hp=S.maxHp;S.mag=S.magSize;S.reserve=60;S.wpn=0;S.own=[true,false,false];S.mags=[12,0,0];S.magSize=12;S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;S.reload=0;S.fireCd=0;S.combo=0;S.comboT=0;
+  S.wave=0;S.score=0;S.kills=0;S.hp=S.maxHp;S.mag=S.magSize;S.reserve=60;S.wpn=0;S.own=[true,false,false,false,false,false,false];S.mags=[12,0,0,0,0,0,0];S.magSize=12;S.zoom=false;S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;S.reload=0;S.fireCd=0;S.combo=0;S.comboT=0;
   S.toSpawn=0;S.waveGap=2.6;S.time=0;S.forceBrutes=0;S.zin=false;
-  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;S.opWave=-1;towerReset();campReset();
+  if(TEST_MODE){S.own=W.map(function(){return true;});S.mags=W.map(function(w){return w.mag;});S.wpn=0;S.magSize=W[0].mag;S.mag=S.mags[0];S.reserve=999;S.nades=5;S.cash=9999;}
+  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;S.opWave=-1;opWant=0;opO=0;OPLEV.forEach(function(l){l.en='Open outpost gate';});towerReset();campReset();
   Object.keys(cache).forEach(function(k){delete cache[k];});
 }
 function startGame(){
@@ -1251,8 +1253,8 @@ function rayCircle(ox,oz,dx,dz,cx,cz,r){
 var ray=new THREE.Raycaster();ray.far=120;ray.camera=camera;
 var _o=new THREE.Vector3(),_d=new THREE.Vector3(),_e=new THREE.Vector3(),_tip=new THREE.Vector3();
 function startReload(){
-  if(S.reload>0||S.mag>=S.magSize||S.reserve<=0)return;
-  S.reload=RELOAD_T;sfxReload();
+  if(S.reload>0||S.mag>=S.magSize||S.reserve<(W[S.wpn].cost||1))return;
+  S.reload=S.rlT=(W[S.wpn].rl||RELOAD_T);sfxReload();
 }
 function shoot(){
   if(S.reload>0||S.fireCd>0)return;
@@ -1287,10 +1289,27 @@ function shoot(){
       if(tWall<70&&w.pel===1)burst(_e,5,dust?3:2,2.6);
     }
   }
+  if(w.rocket)explode(_e.x,_e.y,_e.z);
   _tip.set(0.2,-0.14,-1.0);camera.localToWorld(_tip);
   var len=_tip.distanceTo(_e);tracer.position.copy(_tip).lerp(_e,0.5);tracer.scale.set(1,1,Math.max(len,0.1));tracer.lookAt(_e);
   tracer.visible=true;fx.tracer=0.05;
   if(S.mag===0)setTimeout(function(){if(S.mode==='play'&&S.mag===0)startReload();},180);
+}
+/* rocket blast: splash damage, no self damage */
+function explode(x,y,z){
+  var pt=new THREE.Vector3(x,Math.max(0.6,y),z);
+  P.shake=Math.max(P.shake,1.1);
+  sfxNoise(0.9,'lowpass',2200,1,90);sfxTone(70,0.7,'sine',1,26);
+  for(var i=Z.length-1;i>=0;i--){
+    var zz=Z[i],d=Math.hypot(zz.x-x,zz.z-z);
+    if(d<7){
+      zz.hp-=d<2.5?16:(d<4.5?9:4);zz.stagger=0.8;
+      burst(new THREE.Vector3(zz.x,1,zz.z),6,2,4);
+      if(zz.hp<=0)killZombie(zz,false);
+    }
+  }
+  burst(pt,30,2,8);burst(pt,10,3,6);
+  var bf=glow(x,1.4,z,18,0xffa040,1);bf.userData.boom=0.35;boomList.push(bf);
 }
 function killZombie(z,head,npc){
   z.dead=true;z.deadT=0;
@@ -1305,7 +1324,7 @@ function killZombie(z,head,npc){
     var kind=S.reserve<40?(Math.random()<0.7?'ammo':'kaapi'):(S.hp<60?(Math.random()<0.65?'kaapi':'ammo'):(Math.random()<0.5?'ammo':'kaapi'));
     spawnPickup(kind,z.x,z.z);
   }
-  if(z.type==='boss'||Math.random()<0.05){var un=[1,2].filter(function(i){return !S.own[i];});spawnPickup(un.length?'w'+un[(Math.random()*un.length)|0]:'nade',z.x+1.5,z.z);}
+  if(z.type==='boss'||Math.random()<0.05){var un=[1,2,3,4,5,6].filter(function(i){return !S.own[i];});spawnPickup(un.length?'w'+un[(Math.random()*un.length)|0]:'nade',z.x+1.5,z.z);}
 }
 function hurt(dmg){
   if(VAN.drive)dmg=Math.max(1,Math.round(dmg*0.4));
@@ -1363,14 +1382,41 @@ function gateBlock(o,rad){
   if(Math.abs(o.x)<2.6&&Math.abs(o.z+42)<rad+0.3){o.z=(o.z>-42)?(-42+rad+0.3):(-42-rad-0.3);}
 }
 
+/* ---------- smart zombie brain ---------- */
+var PV={x:0,z:0,lx:0,lz:0};
+function wayOP(z,tx,tz){
+  var zi=inOP(z.x,z.z,0),ti=inOP(tx,tz,0),gz=OP.z-OP.hd;
+  WP.x=tx;WP.z=tz;
+  if(zi===ti)return;
+  WP.x=OP.x;
+  if(ti){WP.z=(z.z<gz+0.5&&Math.abs(z.x-OP.x)<4.5)?gz+4:gz-5;}
+  else{WP.z=(z.z>gz+2.2||Math.abs(z.x-OP.x)>3)?gz+1.5:gz-5;}
+}
+var _sv=[0,0];
+function steer(z,nx,nz,dist){
+  var rad=0.4*z.cfg.scale+0.25,L=2.2+z.cfg.scale*0.6;
+  function free(a,b){return !blocked(z.x+a*L,z.z+b*L,rad)&&!blocked(z.x+a*L*0.5,z.z+b*L*0.5,rad);}
+  _sv[0]=nx;_sv[1]=nz;
+  if(dist<L+0.5||free(nx,nz)){z.side=0;return _sv;}
+  if(!z.side)z.side=Math.random()<0.5?-1:1;
+  var ang=[0.5,1.0,1.5,2.0,2.6];
+  for(var a=0;a<5;a++){
+    for(var s=0;s<2;s++){
+      var th=ang[a]*(s?-z.side:z.side),c=Math.cos(th),sn=Math.sin(th),dx=nx*c-nz*sn,dz=nx*sn+nz*c;
+      if(free(dx,dz)){if(s)z.side=-z.side;_sv[0]=dx;_sv[1]=dz;return _sv;}
+    }
+  }
+  return _sv;
+}
 /* ---------- update ---------- */
 var tmpO={x:0,z:0};
 function update(dt){
   S.time+=dt;
+  if(dt>0){PV.x+=(Math.max(-14,Math.min(14,(P.x-PV.lx)/dt))-PV.x)*Math.min(1,dt*6);PV.z+=(Math.max(-14,Math.min(14,(P.z-PV.lz)/dt))-PV.z)*Math.min(1,dt*6);}PV.lx=P.x;PV.lz=P.z;
   var inCamp=inTemple(P.x,P.z),inOut=inOP(P.x,P.z,0),nn=nearNpc(),nid=nn?nn.id:null;
   if(nid!==nearPrev){nearPrev=nid;$('talk').hidden=!nn;if(nn)$('talk').innerHTML='&#128172; '+nn.en+' <small>E</small>';}
   npcUpdate(dt);
-  if((inOut||(inCamp&&!S.zin))&&S.hp<S.maxHp){S.hpAcc=(S.hpAcc||0)+2*dt;if(S.hpAcc>=1){S.hp=Math.min(S.maxHp,S.hp+1);S.hpAcc-=1;}}
+  if(((inOut&&!S.zinO)||(inCamp&&!S.zin))&&S.hp<S.maxHp){S.hpAcc=(S.hpAcc||0)+2*dt;if(S.hpAcc>=1){S.hp=Math.min(S.maxHp,S.hp+1);S.hpAcc-=1;}}
   if(S.nadeCd>0)S.nadeCd-=dt;
   var asn=CFG.sens/100;
   if(keys.ArrowLeft){P.yaw+=2.2*dt*asn;P.lookT=S.time;}if(keys.ArrowRight){P.yaw-=2.2*dt*asn;P.lookT=S.time;}
@@ -1388,7 +1434,7 @@ function update(dt){
   vanStep(dt);
   var moving=mag>0.1&&!VAN.drive;P.bob+=dt*(moving?(sprint?13:9):0);
   if(S.fireCd>0)S.fireCd-=dt;
-  if(S.reload>0){S.reload-=dt;if(S.reload<=0){S.reload=0;var need=S.magSize-S.mag,take=Math.min(need,S.reserve);S.mag+=take;S.reserve-=take;}}
+  if(S.reload>0){S.reload-=dt;if(S.reload<=0){S.reload=0;var cst=W[S.wpn].cost||1,need=S.magSize-S.mag,take=Math.min(need,Math.floor(S.reserve/cst));S.mag+=take;S.reserve-=take*cst;}}
   if(firing)shoot();
   if(S.comboT>0){S.comboT-=dt;if(S.comboT<=0)S.combo=0;}
   if(S.waveGap>0){S.waveGap-=dt;if(S.waveGap<=0){S.waveGap=0;startWave();}}
@@ -1399,10 +1445,10 @@ function update(dt){
       if(tp==='brute')announce('காளை வருது!','A Kaalai is coming',1800);
     }
   }else if(Z.length===0&&S.wave>0){waveClear();}
-  var anyIn=false,protectedP=((inCamp&&gateOpen<0.5)||inOut);
+  var anyIn=false,anyInO=false,protectedP=((inCamp&&gateOpen<0.5)||(inOut&&opO<0.5));
   for(var i=0;i<Z.length;i++){
-    var z=Z[i],zIn=inTemple(z.x,z.z),tNpc=null,tx=P.x,tz=P.z,dT=Math.hypot(P.x-z.x,P.z-z.z);
-    if(zIn){
+    var z=Z[i],zIn=inTemple(z.x,z.z),zO=inOP(z.x,z.z,0),tNpc=null,tx=P.x,tz=P.z,dT=Math.hypot(P.x-z.x,P.z-z.z);
+    if(zO)anyInO=true;if(zIn){
       anyIn=true;
       var bestD=dT;
       for(var q=0;q<NPCS.length;q++){
@@ -1412,10 +1458,17 @@ function update(dt){
       }
       if(tNpc){tx=tNpc.x;tz=tNpc.z;dT=bestD;}
     }
+    if(!tNpc&&!inCamp&&!inOut){
+      if(z.fl===undefined)z.fl=(Math.random()-0.5)*2;
+      if(z.type==='runner'){var ld=Math.min(1.1,dT/(z.speed+0.1)*0.5);tx+=PV.x*ld;tz+=PV.z*ld;}
+      else if(dT>9){var fk=Math.min(5,(dT-9)*0.4)*z.fl;tx+=-(P.z-z.z)/dT*fk;tz+=(P.x-z.x)/dT*fk;}
+    }
     var wx=tx,wz=tz;
     if(gateOpen>0.3){wayp(z,tx,tz);wx=WP.x;wz=WP.z;}
+    if(opO>0.3&&wx===tx&&wz===tz){wayOP(z,tx,tz);wx=WP.x;wz=WP.z;}
     var viaWp=(wx!==tx||wz!==tz);
     var dx=wx-z.x,dz=wz-z.z,d=Math.hypot(dx,dz)||0.001,nx=dx/d,nz=dz/d;
+    var sd=steer(z,nx,nz,d);nx=sd[0];nz=sd[1];
     if(z.stagger>0)z.stagger-=dt;if(z.lunge>0)z.lunge-=dt;
     var range=1.15+z.cfg.scale*0.35;
     var spitting=(z.type==='spitter'&&!tNpc&&dT<24&&dT>8);
@@ -1432,7 +1485,7 @@ function update(dt){
       tmpO.x+=ttx*Math.max(spd,1.5)*dt*1.4;tmpO.z+=ttz*Math.max(spd,1.5)*dt*1.4;
     }
     gateBlock(tmpO,0.4*z.cfg.scale);
-    opPush(tmpO,0.4*z.cfg.scale);
+    
     z.x=tmpO.x;z.z=tmpO.z;
     z.root.position.x=z.x;z.root.position.z=z.z;z.root.rotation.y=Math.atan2(dx,dz);
     animZ(z,dt,spd>0);
@@ -1440,13 +1493,13 @@ function update(dt){
     if(tNpc){
       if(dT<range+0.2&&z.atkCd<=0){z.atkCd=z.cfg.rate;z.lunge=0.3;hurtNpc(tNpc,Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
     }else{
-      if(z.type==='spitter'&&dT<24&&dT>8&&z.atkCd<=0&&!(protectedP&&!zIn)){z.atkCd=z.cfg.rate;z.lunge=0.3;_e.set(z.x,1.5,z.z);burst(_e,6,0,2.5);hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
-      if(dT<range+0.1&&z.atkCd<=0&&!(protectedP&&!zIn)&&!(P.y>3)){z.atkCd=z.cfg.rate;z.lunge=0.3;hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
+      if(z.type==='spitter'&&dT<24&&dT>8&&z.atkCd<=0&&!(protectedP&&!zIn&&!zO)){z.atkCd=z.cfg.rate;z.lunge=0.3;_e.set(z.x,1.5,z.z);burst(_e,6,0,2.5);hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
+      if(dT<range+0.1&&z.atkCd<=0&&!(protectedP&&!zIn&&!zO)&&!(P.y>3)){z.atkCd=z.cfg.rate;z.lunge=0.3;hurt(Math.round(z.cfg.dmg*DF[CFG.diff].dm));if(S.mode!=='play')return;}
     }
     z.groanT-=dt;
     if(z.groanT<=0){z.groanT=4+Math.random()*7;if(dT<60)sfxGroan(1-dT/60);}
   }
-  S.zin=anyIn;
+  S.zin=anyIn;S.zinO=anyInO;
   var pr2=VAN.drive?12:2.6;
   for(var k=pickups.length-1;k>=0;k--){
     var pk=pickups[k];pk.t+=dt;pk.life-=dt;pk.g.rotation.y+=dt*2;pk.g.position.y=0.75+Math.sin(pk.t*3)*0.12;
@@ -1482,11 +1535,15 @@ function updateFx(dt){
   var lowPulse=(S.mode==='play'&&S.hp<30)?(0.25+0.15*Math.sin(S.time*6)):0;
   el.vig.style.opacity=String(Math.max(Math.max(P.hurt,0),lowPulse));
   P.kick=Math.max(0,P.kick-dt*9);P.shake=Math.max(0,P.shake-dt*4);
-  var rp=S.reload>0?Math.sin(Math.PI*(1-S.reload/RELOAD_T)):0;
+  var rp=S.reload>0?Math.sin(Math.PI*(1-S.reload/(S.rlT||RELOAD_T))):0;
   gun.position.set(0.22+Math.sin(P.bob*0.5)*0.008,-0.22-rp*0.28+Math.abs(Math.sin(P.bob))*0.006,-0.5+P.kick*0.09);
   gun.rotation.x=rp*0.7+P.kick*0.09;
+  var gsc=W[S.wpn].gs||[1,1,1];gun.scale.set(gsc[0],gsc[1],gsc[2]);
 }
 function updateCamera(){
+  var zm=!!(S.zoom&&W[S.wpn].zoom&&!VAN.drive&&S.mode==='play'),tf=zm?24:72;
+  if(Math.abs(camera.fov-tf)>0.2){camera.fov+=(tf-camera.fov)*0.25;camera.updateProjectionMatrix();}
+  gun.visible=!VAN.drive&&!zm;scopeEl.style.display=zm?'block':'none';
   var sh=P.shake*0.03;
   if(VAN.drive){
     var pc=Math.cos(P.pitch),dist=9,lx=-Math.sin(P.yaw)*pc,ly=Math.sin(P.pitch),lz=-Math.cos(P.yaw)*pc;
@@ -1554,8 +1611,8 @@ window.addEventListener('keydown',function(e){
   if(S.mode==='play'){
     if(S.shop){if(e.code==='Escape'||e.code==='KeyE')closeShop();return;}
     if(e.code==='KeyO'){pause();openSettings();return;}
-    if(e.code==='KeyR')startReload();if(e.code==='KeyG')throwNade();if(e.code==='KeyE')talk();if(e.code==='KeyQ')cycleWpn();
-    var dg=/^Digit([1-3])$/.exec(e.code);if(dg)switchWpn(+dg[1]-1);
+    if(e.code==='KeyZ'&&W[S.wpn].zoom)S.zoom=!S.zoom;if(e.code==='KeyR')startReload();if(e.code==='KeyG')throwNade();if(e.code==='KeyE')talk();if(e.code==='KeyQ')cycleWpn();
+    var dg=/^Digit([1-7])$/.exec(e.code);if(dg)switchWpn(+dg[1]-1);
     if(e.code==='Space'){firing=true;}
     if((e.code==='KeyP'||(e.code==='Escape'&&!document.pointerLockElement))){pause();}
     if(/^(Space|Arrow(Up|Down|Left|Right))$/.test(e.code))e.preventDefault();
@@ -1628,15 +1685,22 @@ if(document.fonts&&document.fonts.load){
     .then(function(){signs.forEach(function(f){f();});}).catch(function(){});
 }
 /* ---------- weapons, grenade, camp, shop, settings ---------- */
-var W=[{n:'Thuppaki',mag:12,cd:0.19,pel:1,spr:0.004,dmg:1},{n:'Shotgun',mag:6,cd:0.8,pel:8,spr:0.06,dmg:1},{n:'Rifle',mag:20,cd:0.11,pel:1,spr:0.006,dmg:1.5}];
-S.wpn=0;S.own=[true,false,false];S.mags=[12,0,0];S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;
+var W=[
+ {n:'Thuppaki',mag:12,cd:0.19,pel:1,spr:0.004,dmg:1},
+ {n:'Shotgun',mag:6,cd:0.8,pel:8,spr:0.06,dmg:1,r:0.85},
+ {n:'Rifle',mag:20,cd:0.11,pel:1,spr:0.006,dmg:1.5},
+ {n:'Pistol',mag:15,cd:0.15,pel:1,spr:0.008,dmg:1,r:1.25,gs:[0.7,0.7,0.55]},
+ {n:'Sniper',mag:5,cd:1.3,pel:1,spr:0,dmg:7,cost:2,rl:2.2,zoom:1,r:0.7,gs:[1,1,1.5]},
+ {n:'Rocket launcher',mag:1,cd:1.2,pel:1,spr:0.002,dmg:6,cost:5,rl:2.4,rocket:1,r:0.45,gs:[1.8,1.8,1.1]},
+ {n:'SMG',mag:30,cd:0.07,pel:1,spr:0.03,dmg:0.7,r:1.4,gs:[0.85,0.85,0.8]}];
+S.wpn=0;S.own=[true,false,false,false,false,false,false];S.mags=[12,0,0,0,0,0,0];S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;
 var nearPrev=false,CAMP=null;
 function switchWpn(i){
   if(!S.own[i]||i===S.wpn)return;
-  S.mags[S.wpn]=S.mag;S.wpn=i;S.magSize=W[i].mag;S.mag=S.mags[i];S.reload=0;S.fireCd=0.3;
+  S.mags[S.wpn]=S.mag;S.zoom=false;S.wpn=i;S.magSize=W[i].mag;S.mag=S.mags[i];S.reload=0;S.fireCd=0.3;
   announce('ஆயுதம்',W[i].n,900);sfxReload();
 }
-function cycleWpn(){for(var k=1;k<=3;k++){var i=(S.wpn+k)%3;if(S.own[i]){switchWpn(i);return;}}}
+function cycleWpn(){for(var k=1;k<=W.length;k++){var i=(S.wpn+k)%W.length;if(S.own[i]){switchWpn(i);return;}}}
 function throwNade(){
   if(S.nades<=0||S.nadeCd>0||S.shop||S.mode!=='play')return;
   S.nades--;S.nadeCd=6;P.shake=1.2;
@@ -1758,7 +1822,7 @@ function npcUpdate(dt){
 P.y=0;S.vanWave=-1;
 var TOWER={x:-15.4,z:-44,H:8.1,lx:-13.1,up:false};
 var WORKERS=[],gateOpen=0,gateWant=0,vanLight=null,vanHead=null,VANG=null,LEVERS=[];
-var VAN={x:15.3,z:-52.5,h:0,v:0,drive:false};
+var VAN={x:0,z:69.5,h:Math.PI,v:0,drive:false};
 var vanCols=[];
 var gateL=new THREE.Group(),gateR=new THREE.Group();
 var cwood=lam(0x6b4423,0x140a04),ciron=lam(0x23252b,0x08080a),cstone=lam(0x8a7f70,0x0c0a08),cstraw=lam(0xc9a64a,0x1a1408);
@@ -1891,7 +1955,7 @@ addCol(-17.4,-59.3,0.6,1.3);addCol(-17.4,-60.7,0.6,1.3);
 
 /* ---------- ZOMBIE-PROOF VILLAGE VAN (drivable) ---------- */
 (function(){
-  var g=new THREE.Group();g.position.set(15.3,0,-52.5);scene.add(g);VANG=g;
+  var g=new THREE.Group();g.position.set(VAN.x,0,VAN.z);g.rotation.y=VAN.h;scene.add(g);VANG=g;
   var cream=lam(0xe8e0cc,0x1c1a14),teal=lam(0x1f6b5f,0x08201c),steel=lam(0x5d646e,0x101216),dk=lam(0x15171c,0x050506),
       spk=lam(0x9aa0a8,0x202226),sand=lam(0xb8a070,0x1a1608),glass=bas(0x0c1016);
   var cone=new THREE.ConeGeometry(0.06,0.4,6),gR=cone.clone().rotateZ(-Math.PI/2),gL=cone.clone().rotateZ(Math.PI/2),gF=cone.clone().rotateX(Math.PI/2);
@@ -1936,6 +2000,12 @@ var driver=addWorker({id:'van',name:'டிரைவர் செல்வம்
 var vanNpc={id:'drive',name:'வேன்',en:'Drive van',x:15.3,z:-52.5,by:0,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:null,markY:3.7,talk:null,aim:null,cd:0};
 (function(){var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.2),bas(0x79bf5a));mk.position.set(15.3,3.7,-52.5);scene.add(mk);vanNpc.mark=mk;})();
 NPCS.push(vanNpc);
+function moveNpc(n,x,z){
+  for(var i=0;i<COL.length;i++){var c=COL[i];if(c.x===n.x&&c.z===n.z&&c.r===0.5){c.x=x;c.z=z;break;}}
+  n.x=x;n.z=z;n.x0=x;n.z0=z;n.root.position.x=x;n.root.position.z=z;
+  if(n.mark){n.mark.position.x=x;n.mark.position.z=z;}
+}
+moveNpc(mech,2.8,66.4);moveNpc(driver,-2.4,69.5);mech.base=-Math.PI/2;driver.base=Math.PI/2;
 
 function vanSync(){
   var V=VAN,sh=Math.sin(V.h),ch=Math.cos(V.h);
@@ -2046,7 +2116,7 @@ sweeper.talk=function(){speak('முனியம்மா · Muniyamma',pick(['
 grinder.talk=function(){speak('அஞ்சலை · Anjalai',pick(['Grinding batter for tomorrow\'s idli. We will have a tomorrow.','The stone is heavy but my hands are heavier.']));};
 poosari.talk=function(){speak('பூசாரி · Poosari',pick(['The bell keeps the dark away. Fight well.','Amman is watching the gate tonight.']));};
 chippy.talk=function(){speak('தச்சர் · Thachar',pick(['This barricade is teak from the old thinnai. It will hold.','Climb the watchtower, thambi. Shoot over the wall.']));};
-mech.talk=function(){speak('மெக்கானிக் ராசு · Raasu',pick(['Spikes on the bumper, mesh on the glass. Nothing bites this van. Climb in and drive it!','Open the gate with the lever, then take the van out. Run them over, thambi.']));};
+mech.talk=function(){speak('மெக்கானிக் ராசு · Raasu',pick(['Spikes on the bumper, mesh on the glass. Nothing bites this van. Climb in and drive it!','The van is parked in the Outpost camp. Open its gate with the lever, then drive it out. Run them over, thambi.']));};
 driver.talk=function(){
   if(S.vanWave===S.wave){speak('டிரைவர் செல்வம் · Driver Selvam','Van is empty for now, thambi. Fresh stock after the next wave.');return;}
   S.vanWave=S.wave;S.reserve+=30;S.nades=Math.min(5,S.nades+1);sfxPickup();
@@ -2079,7 +2149,7 @@ function workFx(t){
 function campReset(){
   gateWant=0;gateOpen=0;
   LEVERS.forEach(function(l){l.en='Open gate';});
-  VAN.x=15.3;VAN.z=-52.5;VAN.h=0;VAN.v=0;VAN.drive=false;vanNpc.en='Drive van';vanSync();
+  VAN.x=0;VAN.z=69.5;VAN.h=Math.PI;VAN.v=0;VAN.drive=false;vanNpc.en='Drive van';vanSync();
   NPCS.forEach(function(n){if(n.max)n.hp=n.max;n.alertT=-9;});
   engine(false,0);gun.visible=true;
 }
@@ -2093,7 +2163,7 @@ function campFx(t,dt){
 }
 
 /* ===== OUTPOST CAMP (second safe camp down the road) ===== */
-var OPL=[],opO=0,opIn=false;
+var OPL=[],opO=0,opIn=false,opWant=0,OPG=[],OPLEV=[];
 (function(){
   var wd=lam(0x6b4423,0x140a04),wd2=lam(0x8a5a30,0x1a0e06),iron=lam(0x23252b,0x08080a),stone=lam(0x8a7f70,0x0c0a08),i;
   var fl=recv(new THREE.Mesh(new THREE.PlaneGeometry(2*OP.hw,2*OP.hd),lam(0x6a5a46)));
@@ -2113,7 +2183,7 @@ var OPL=[],opO=0,opIn=false;
     glow(cx,4.8,cz,3.2,0xffd98a,0.7);addCol(cx,cz,0.9,4.5);
   });});
   /* gates: posts, crossbars, swinging leaves, kolam thresholds */
-  [OP.z-OP.hd,OP.z+OP.hd].forEach(function(zc){
+  [OP.z-OP.hd].forEach(function(zc){
     [-1,1].forEach(function(s){
       box(0.6,4.2,0.6,wd2,OP.x+s*5.7,2.1,zc,scene);
       var g=new THREE.Group();g.position.set(OP.x+s*5.4,0.1,zc);scene.add(g);
@@ -2126,6 +2196,28 @@ var OPL=[],opO=0,opIn=false;
   });
   var sg=makeSign(4.8,1.0,'#1f6b5f','#f4ecd8','துணை முகாம்','OUTPOST CAMP',54,22);
   sg.position.set(OP.x,4.85,OP.z-OP.hd-0.3);sg.rotation.y=Math.PI;scene.add(sg);
+  /* outpost gate: one gate, solid until the lever opens it */
+  seg(OP.x-2.75,OP.z+OP.hd,5.5,false);seg(OP.x+2.75,OP.z+OP.hd,5.5,false);
+  OPG=[-3.6,0,3.6].map(function(dx){return addCol(OP.x+dx,OP.z-OP.hd,2.0,3.2);});
+  function toggleOP(){
+    opWant=opWant?0:1;
+    sfxNoise(0.5,'bandpass',260,0.2);sfxTone(85,0.55,'sawtooth',0.1,55);
+    OPLEV.forEach(function(l){l.en=opWant?'Close outpost gate':'Open outpost gate';});
+    nearPrev=false;
+    if(opWant)announce('வாசல் திறந்தது','Outpost gate OPEN · zombies can walk in',2000);
+    else announce('வாசல் மூடியது','Outpost gate closed',1500);
+  }
+  function lever(x,z){
+    var arm=new THREE.Group();
+    box(0.3,1.2,0.3,lam(0x3a2a1a,0x0c0804),x,0.6,z,scene);box(0.5,0.12,0.5,stone,x,0.06,z,scene);
+    arm.position.set(x,1.1,z);scene.add(arm);
+    box(0.08,0.7,0.08,iron,0,0.3,0,arm);
+    var kn=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),bas(0xd9382a));kn.position.set(0,0.68,0);arm.add(kn);
+    var mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.16),bas(0xd9382a));mk.position.set(x,2.0,z);scene.add(mk);
+    var n={id:'opgate',name:'வாசல்',en:'Open outpost gate',x:x,z:z,by:0,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:mk,markY:2.0,talk:toggleOP,aim:null,cd:0,arm:arm};
+    NPCS.push(n);OPLEV.push(n);addCol(x,z,0.3,1.2);
+  }
+  lever(OP.x+3.5,OP.z-OP.hd+2.5);lever(OP.x+3.5,OP.z-OP.hd-2.5);
   /* beacon so you can find it from far away */
   var bc=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,60,10),new THREE.MeshBasicMaterial({color:0x79bf5a,transparent:true,opacity:0.16,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
   bc.position.set(OP.x,30,OP.z);scene.add(bc);
@@ -2149,18 +2241,23 @@ var OPL=[],opO=0,opIn=false;
   hav.talk=function(){
     if(S.opWave===S.wave){speak('ஹவில்தார் கருப்பு · Havildar Karuppu','Crate is empty for now, thambi. Come back after the next wave.');return;}
     S.opWave=S.wave;S.reserve+=40;S.nades=Math.min(5,S.nades+1);S.hp=Math.min(S.maxHp,S.hp+30);sfxPickup();
-    speak('ஹவில்தார் கருப்பு · Havildar Karuppu','Outpost supplies: +40 ammo, +1 grenade, +30 health. Free once every wave. The dead cannot cross the kolam here.');
+    speak('ஹவில்தார் கருப்பு · Havildar Karuppu','Outpost supplies: +40 ammo, +1 grenade, +30 health. Free once every wave. Keep the gate closed and the dead cannot get in.');
   };
 })();
 function outpostFx(t,dt){
-  var d=Math.min(Math.hypot(P.x-OP.x,P.z-(OP.z-OP.hd)),Math.hypot(P.x-OP.x,P.z-(OP.z+OP.hd)));
-  opO+=(((S.mode==='play'&&d<12)?1:0)-opO)*Math.min(1,dt*3);
+  opO+=(opWant-opO)*Math.min(1,dt*3);
+  var opOpen=opO>0.6;OPG.forEach(function(c,i){c.x=opOpen?99999:OP.x+(i-1)*3.6;});
+  for(var j=0;j<OPLEV.length;j++){var ar=OPLEV[j].arm;ar.rotation.x+=((opWant?0.9:-0.9)-ar.rotation.x)*Math.min(1,dt*8);}
   for(var i=0;i<OPL.length;i++)OPL[i].g.rotation.y=opO*1.5*OPL[i].n*OPL[i].s;
   var inside=S.mode==='play'&&inOP(P.x,P.z,0);
-  if(inside!==opIn){opIn=inside;if(inside)announce('துணை முகாம்','Outpost camp · zombies cannot hurt you here · heal and resupply',2400);}
+  if(inside!==opIn){opIn=inside;if(inside)announce('துணை முகாம்','Outpost camp · keep the gate closed · heal and resupply',2400);}
 }
 var ITEMS=[
   {n:'Shotgun',d:'8 pellets',c:250,f:function(){return buyW(1);}},
+  {n:'Pistol',d:'fast, light',c:120,f:function(){return buyW(3);}},
+  {n:'SMG',d:'spray',c:300,f:function(){return buyW(6);}},
+  {n:'Sniper',d:'scope, big damage',c:600,f:function(){return buyW(4);}},
+  {n:'Rocket launcher',d:'explosive',c:900,f:function(){return buyW(5);}},
   {n:'Rifle',d:'fast, strong',c:450,f:function(){return buyW(2);}},
   {n:'Grenade',d:'+1',c:60,f:function(){S.nades++;return true;}},
   {n:'Ammo',d:'+30',c:40,f:function(){S.reserve+=30;return true;}},
@@ -2186,6 +2283,18 @@ $('shopItems').addEventListener('click',function(e){
 });
 $('btnNade').addEventListener('pointerdown',function(e){e.preventDefault();throwNade();});
 $('btnSwap').addEventListener('pointerdown',function(e){e.preventDefault();cycleWpn();});
+/* sniper scope: Z key, right mouse button, or the ZOOM button on touch */
+var scopeEl=document.createElement('div');
+scopeEl.style.cssText='position:fixed;inset:0;z-index:1;pointer-events:none;display:none;background:radial-gradient(circle at center,transparent 0,transparent 26vmin,#000 27.5vmin)';
+scopeEl.innerHTML='<div style="position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.8)"></div><div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(0,0,0,.8)"></div>';
+document.body.appendChild(scopeEl);
+canvas.addEventListener('mousedown',function(e){if(e.button===2&&S.mode==='play'&&W[S.wpn].zoom)S.zoom=!S.zoom;});
+(function(){
+  var b=document.createElement('button');b.className='tbtn';b.id='btnZoom';b.type='button';b.textContent='ZOOM';
+  b.style.cssText='right:calc(176px + env(safe-area-inset-right,0px));bottom:calc(140px + env(safe-area-inset-bottom,0px));width:56px;height:56px;font-size:11px';
+  b.addEventListener('pointerdown',function(e){e.preventDefault();if(W[S.wpn].zoom)S.zoom=!S.zoom;});
+  $('tc').appendChild(b);
+})();
 /* ---------- settings panel ---------- */
 var SB=$('setBox'),customName='';
 function saveCfg(){try{localStorage.setItem('zombieOoruCfg',JSON.stringify(CFG));}catch(e){}}
