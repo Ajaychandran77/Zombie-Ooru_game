@@ -172,6 +172,18 @@ kbd{font-family:var(--font-mono);font-size:12px;border:1px solid rgba(244,236,21
   .lead{font-size:15px}
 }
 @media (prefers-reduced-motion:reduce){.banner,.hp i{transition:none}.pop.go{animation-duration:.01s}}
+.mission{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:3;pointer-events:none;display:flex;gap:10px;align-items:center;max-width:min(380px,62vw)}
+.mission .ma{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font:800 22px var(--font-mono);color:var(--manjal);text-shadow:0 0 10px rgba(242,176,30,.6)}
+.mission .mt{font-weight:800;font-size:15px;color:var(--kolam)}
+.mission .ms{font-size:12px;opacity:.8;font-family:var(--font-mono)}
+body.touch-mode .mission{top:calc(58px + env(safe-area-inset-top,0px));max-width:min(300px,46vw);padding:5px 10px}
+body.touch-mode .mission .mt{font-size:13px}body.touch-mode .mission .ms{font-size:10px}
+#btnMap{left:50%;margin-left:80px;top:calc(10px + env(safe-area-inset-top,0px));width:44px;height:44px;font-size:11px}
+body.touch-mode #btnMap{left:calc(50% + 48px);margin-left:0;top:calc(8px + env(safe-area-inset-top,0px));width:40px;height:40px;font-size:10px}
+.islmap{position:fixed;inset:0;z-index:9;background:rgba(4,6,20,.82);display:flex;align-items:center;justify-content:center;touch-action:none}
+.islmap-box{position:relative;border:2px solid rgba(242,176,30,.6);border-radius:10px;overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.7);width:min(94vw,calc(88vh*1.2));max-height:88vh}
+.islmap canvas{display:block;width:100%;height:auto}
+.islmap-hint{position:absolute;left:0;right:0;bottom:8px;text-align:center;font:600 12px var(--font-mono);letter-spacing:.08em;opacity:.7}
 </style>
 <style id="mobile-layout">
 /* ===== NEAT MOBILE LAYOUT (touch devices only) ===== */
@@ -300,6 +312,7 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
   <button class="tbtn" id="btnReload" type="button">RELOAD</button>
   <button class="tbtn" id="btnPause" type="button">II</button>
   <button class="tbtn" id="btnMute" type="button">SND</button>
+  <button class="tbtn" id="btnMap" type="button">MAP</button>
   <button class="tbtn" id="btnNade" type="button">&#128163;</button>
   <button class="tbtn" id="btnSwap" type="button">SWAP</button>
   <button class="tbtn" id="btnFS" type="button" aria-label="Fullscreen">&#9974;</button>
@@ -358,7 +371,7 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
       <dt><kbd>Mouse</kbd></dt><dd>Aim. Click to fire. Headshots hit three times harder.</dd>
       <dt><kbd>Tab</kbd></dt><dd>Press to open the weapon wheel, press again to close. Move the mouse to a slot and click, or press <kbd>1</kbd>-<kbd>5</kbd>.</dd>
       <dt><kbd>E</kbd></dt><dd>Talk, work the gate lever, climb the tower, drive or leave the van.</dd>
-      <dt><kbd>R</kbd></dt><dd>Reload. <kbd>Esc</kbd> pauses, <kbd>M</kbd> mutes.</dd>
+      <dt><kbd>R</kbd></dt><dd>Reload. <kbd>Esc</kbd> pauses, <kbd>M</kbd> opens the map, <kbd>N</kbd> mutes.</dd>
     </dl>
     <dl class="keys touch-only s-menu s-pause">
       <dt>Left thumb</dt><dd>Drag anywhere on the left to move (or drive).</dd>
@@ -391,6 +404,40 @@ if(!window.THREE){$('menuErr').hidden=false;return;}
 
 /* ---------- state ---------- */
 var RELOAD_T=1.3, WB=88, EYE=1.7;
+/* ---------- ISLAND LEVEL: layout data (from the map plan) ---------- */
+var ISL={rx:140,rz:128,m:0.94};
+function islEdge(th){return 1+0.04*Math.sin(3*th+1)+0.03*Math.sin(5*th+2)+0.02*Math.sin(7*th+0.5);}
+function inLake(x,z){var a=(x-LAKE.x)/(LAKE.rx+4),b=(z-LAKE.z)/(LAKE.rz+4);return a*a+b*b<1;}
+function onIsland(x,z,m){var u=x/ISL.rx,v=z/ISL.rz,d=Math.sqrt(u*u+v*v);if(d<0.001)return true;return d<islEdge(Math.atan2(v,u))*(m===undefined?ISL.m:m);}
+function islClamp(o,pad){var u=o.x/ISL.rx,v=o.z/ISL.rz,d=Math.sqrt(u*u+v*v);if(d<0.001)return;var lim=islEdge(Math.atan2(v,u))*ISL.m-(pad||0)/120;if(d>lim){var k=lim/d;o.x*=k;o.z*=k;}}
+var LM={radio:{x:-34,z:-100},forest:{x:-76,z:-72},factory:{x:80,z:-66},dock:{x:36,z:-8},farm:{x:92,z:36},hospital:{x:-92,z:16},police:{x:-30,z:58},beach:{x:66,z:80}};
+var LAKE={x:64,z:-8,rx:30,rz:20};
+var HORDES=[{x:-62,z:-40},{x:-100,z:-4},{x:68,z:-86},{x:112,z:-30},{x:34,z:52},{x:92,z:64}];
+var ROADS=[
+  {w:8,pts:[[0,24],[-20,28],[-50,26],[-80,18]]},
+  {w:8,pts:[[0,24],[30,28],[60,34],[92,36],[114,34],[116,6],[108,-24],[96,-44],[86,-56]]},
+  {w:8,pts:[[15,-30],[34,-34],[60,-40],[80,-52]]},
+  {w:8,pts:[[-16,-30],[-34,-38],[-52,-52],[-70,-64]]},
+  {w:3.2,dash:1,pts:[[-52,-52],[-54,-80],[-46,-94],[-34,-98]]},
+  {w:3.2,dash:1,pts:[[0,88],[26,98],[48,94],[64,86]]},
+  {w:3.2,dash:1,pts:[[-12,60],[-24,60]]},
+  {w:3.2,dash:1,pts:[[-20,28],[-40,44],[-30,54]]},
+  {w:3.2,dash:1,pts:[[34,-34],[38,-18],[34,-8]]}
+];
+var CLRC=[[-34,-100,18],[-76,-72,18],[80,-66,32],[92,36,36],[-92,16,22],[-30,58,16],[66,80,20],[34,-8,8],[100,22,34],[116,50,10]];
+function segDist(px,pz,a,b){var dx=b[0]-a[0],dz=b[1]-a[1],t=((px-a[0])*dx+(pz-a[1])*dz)/(dx*dx+dz*dz);t=Math.max(0,Math.min(1,t));var cx=a[0]+t*dx,cz=a[1]+t*dz;return Math.hypot(px-cx,pz-cz);}
+function treeOK(x,z){
+  var i,j;
+  if(!onIsland(x,z,0.88))return false;
+  if(x>-28&&x<28&&z>-86&&z<20)return false;
+  if(Math.abs(x)<9&&z>-40&&z<92)return false;
+  if(Math.abs(x)<17&&z>52&&z<84)return false;
+  for(i=0;i<CLRC.length;i++){var c=CLRC[i];if(Math.hypot(x-c[0],z-c[1])<c[2])return false;}
+  var lx=(x-LAKE.x)/(LAKE.rx+6),lz=(z-LAKE.z)/(LAKE.rz+6);if(lx*lx+lz*lz<1)return false;
+  for(i=0;i<ROADS.length;i++){var r=ROADS[i];for(j=0;j<r.pts.length-1;j++){if(segDist(x,z,r.pts[j],r.pts[j+1])<r.w/2+2.6)return false;}}
+  return true;
+}
+
 var TEST_MODE=true; /* set to false for normal play */
 var S={mode:'menu',wave:0,score:0,kills:0,hp:100,maxHp:100,mag:12,magSize:12,reserve:60,reload:0,fireCd:0,
   combo:0,comboT:0,toSpawn:0,spawnT:0,spawnGap:1,maxAlive:14,waveGap:0,forceBrutes:0,best:0,time:0,day:0,zin:false};
@@ -418,7 +465,7 @@ var canvas=renderer.domElement;
 var SHADOWS=!isTouch;
 
 var scene=new THREE.Scene();
-scene.fog=new THREE.FogExp2(0x2b2347,0.014);
+scene.fog=new THREE.FogExp2(0x2b2347,0.011);
 var camera=new THREE.PerspectiveCamera(72,window.innerWidth/window.innerHeight,0.1,700);
 camera.rotation.order='YXZ';
 scene.add(camera);
@@ -547,9 +594,9 @@ function opPush(o,r){var dx=o.x-OP.x,dz=o.z-OP.z,px=OP.hw+r-Math.abs(dx),pz=OP.h
 
 var ground=recv(new THREE.Mesh(new THREE.PlaneGeometry(700,700),new THREE.MeshLambertMaterial({map:earthTex})));
 ground.rotation.x=-Math.PI/2;scene.add(ground);
-var road=recv(new THREE.Mesh(new THREE.PlaneGeometry(9,150),lam(0x5f503e)));
-road.rotation.x=-Math.PI/2;road.position.set(0,0.02,40);scene.add(road);
-[-4.7,4.7].forEach(function(x){var e=recv(new THREE.Mesh(new THREE.PlaneGeometry(0.7,150),lam(0x3e3226)));e.rotation.x=-Math.PI/2;e.position.set(x,0.025,40);scene.add(e);});
+var road=recv(new THREE.Mesh(new THREE.PlaneGeometry(9,124),lam(0x5f503e)));
+road.rotation.x=-Math.PI/2;road.position.set(0,0.02,27);scene.add(road);
+[-4.7,4.7].forEach(function(x){var e=recv(new THREE.Mesh(new THREE.PlaneGeometry(0.7,124),lam(0x3e3226)));e.rotation.x=-Math.PI/2;e.position.set(x,0.025,27);scene.add(e);});
 var plaza=recv(new THREE.Mesh(new THREE.PlaneGeometry(30,16),lam(0x6a5a46)));
 plaza.rotation.x=-Math.PI/2;plaza.position.set(0,0.022,-30);scene.add(plaza);
 var kolam=new THREE.Mesh(new THREE.PlaneGeometry(12,12),new THREE.MeshBasicMaterial({map:kolamTex,transparent:true,depthWrite:false,color:0xdddddd}));
@@ -562,7 +609,7 @@ function paddy(cx,cz,w,d){
   box(w+1.6,0.35,0.8,bm,cx,0.17,cz-d/2,scene);box(w+1.6,0.35,0.8,bm,cx,0.17,cz+d/2,scene);
   box(0.8,0.35,d,bm,cx-w/2,0.17,cz,scene);box(0.8,0.35,d,bm,cx+w/2,0.17,cz,scene);
 }
-paddy(-52,26,42,70);paddy(52,26,42,70);paddy(-56,-62,54,40);paddy(56,-62,54,40);paddy(-50,-12,30,24);paddy(50,-12,30,24);
+/* farm fields are placed by the island level */
 
 /* temple: gopuram gateway + walled courtyard that serves as the safe camp */
 var TEMPLE={x0:-20,x1:20,z0:-76,z1:-35.4};
@@ -809,15 +856,15 @@ auto(-4.6,4,0.5);auto(4.9,-9,-0.35);auto(-7.8,-22,1.1);
 (function(){
   var spots=[],tries=0;
   function ok(x,z){
-    if(inOP(x,z,4))return false;
+    if(inOP(x,z,4)||!treeOK(x,z))return false;
     if(Math.abs(x)<8&&z>-32)return false;
     if(Math.abs(x)<28&&z<-28&&z>-82)return false;
     for(var i=0;i<COL.length;i++){var c=COL[i],dx=x-c.x,dz=z-c.z;if(dx*dx+dz*dz<(c.r+2.2)*(c.r+2.2))return false;}
     for(var j=0;j<spots.length;j++){var s=spots[j],ex=x-s.x,ez=z-s.z;if(ex*ex+ez*ez<12)return false;}
     return true;
   }
-  while(spots.length<64&&tries<2500){
-    tries++;var x=(rnd()*2-1)*90,z=(rnd()*2-1)*90;
+  while(spots.length<80&&tries<4000){
+    tries++;var x=(rnd()*2-1)*ISL.rx,z=(rnd()*2-1)*ISL.rz;
     if(ok(x,z))spots.push({x:x,z:z,h:7+rnd()*3.5,tilt:(rnd()-0.5)*0.16});
   }
   var N=spots.length;
@@ -1184,11 +1231,12 @@ function animZ(z,dt,moving){
 }
 function blocked(x,z,r){for(var i=0;i<COL.length;i++){var c=COL[i],dx=x-c.x,dz=z-c.z,m=c.r+r;if(dx*dx+dz*dz<m*m)return true;}return false;}
 function spawnPos(){
+  if(Math.random()<0.45){var hh=HORDES[(Math.random()*HORDES.length)|0],hd=Math.hypot(hh.x-P.x,hh.z-P.z);if(hd>38&&hd<95){var hx=hh.x+(Math.random()-0.5)*10,hz=hh.z+(Math.random()-0.5)*10;if(onIsland(hx,hz,0.86)&&!inLake(hx,hz)&&!inTemple(hx,hz)&&!inOP(hx,hz,3)&&!blocked(hx,hz,1.2))return [hx,hz];}}
   for(var i=0;i<14;i++){
     var a=Math.random()*6.2832,r=46+Math.random()*30,x=P.x+Math.sin(a)*r,z=P.z+Math.cos(a)*r;
-    if(Math.abs(x)>WB||Math.abs(z)>WB)continue;if(inTemple(x,z)||inOP(x,z,3))continue;if(!blocked(x,z,1.2))return [x,z];
+    if(!onIsland(x,z,0.86)||inLake(x,z))continue;if(inTemple(x,z)||inOP(x,z,3))continue;if(!blocked(x,z,1.2))return [x,z];
   }
-  return [(Math.random()<0.5?-1:1)*(WB-2),(Math.random()*2-1)*WB];
+  return [(Math.random()<0.5?-1:1)*8,30+Math.random()*20];
 }
 function spawnZombie(type,x,z,idle){
   var zb=makeZombie(type);
@@ -1264,6 +1312,7 @@ function drawRadar(){
   }
   pickups.forEach(function(p){dot(p.x,p.z,'#f2b01e',2.5);});
   dot(OP.x,OP.z,'#79bf5a',4.5);dot(0,-58,'#f4ecd8',3.5);
+  if(islCache.SPOTS)islCache.SPOTS.forEach(function(pl){dot(pl.x,pl.z,pl.c,pl.big?5:3);});
   Z.forEach(function(z){dot(z.x,z.z,z.type==='brute'?'#ff7a2a':'#d9382a',z.type==='brute'?4.5:3);});
   rctx.fillStyle='#f4ecd8';rctx.beginPath();rctx.moveTo(c,c-6);rctx.lineTo(c-4,c+4);rctx.lineTo(c+4,c+4);rctx.closePath();rctx.fill();
 }
@@ -1306,7 +1355,7 @@ function resetGame(){
   S.wave=0;S.score=0;S.kills=0;S.hp=S.maxHp;S.mag=S.magSize;S.reserve=60;S.wpn=0;S.own=[true,false,false,false,false,false,false];S.mags=[12,0,0,0,0,0,0];S.magSize=12;S.zoom=false;S.nades=2;S.nadeCd=0;S.cash=0;S.shop=false;S.reload=0;S.fireCd=0;S.combo=0;S.comboT=0;
   S.toSpawn=0;S.waveGap=2.6;S.time=0;S.forceBrutes=0;S.zin=false;
   if(TEST_MODE){S.own=W.map(function(){return true;});S.mags=W.map(function(w){return w.mag;});S.wpn=0;S.magSize=W[0].mag;S.mag=S.mags[0];S.reserve=999;S.nades=5;S.cash=9999;}
-  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;S.opWave=-1;opWant=0;opO=0;OPLEV.forEach(function(l){l.en='Open outpost gate';});towerReset();campReset();
+  P.x=0;P.z=-49;P.yaw=Math.PI;P.pitch=0;P.shake=0;P.kick=0;P.hurt=0;S.healWave=-1;S.vanWave=-1;S.opWave=-1;opWant=0;opO=0;OPLEV.forEach(function(l){l.en='Open outpost gate';});towerReset();campReset();islReset();
   Object.keys(cache).forEach(function(k){delete cache[k];});
 }
 function startGame(){
@@ -1397,7 +1446,7 @@ function explode(x,y,z){
 function killZombie(z,head,npc){
   z.dead=true;z.deadT=0;
   var i=Z.indexOf(z);if(i>=0)Z.splice(i,1);C.push(z);
-  if(!npc){S.kills++;S.combo++;S.comboT=2.8;}
+  if(!npc){S.kills++;S.combo++;S.comboT=2.8;islKill(z);}
   var mult=1+Math.min(4,Math.floor(S.combo/3));
   if(!npc){S.score+=(z.cfg.score+(head?50:0))*mult;S.cash+=Math.round(z.cfg.score/5);}
   sfxHit(head);sfxDie();
@@ -1429,7 +1478,7 @@ function pickType(){
 }
 function startWave(){
   S.wave++;var w=S.wave;
-  S.toSpawn=Math.min(6+4*(w-1),58);S.maxAlive=Math.min(12+2*w,34);S.spawnGap=Math.max(0.35,1.4-w*0.08);S.spawnT=0.5;
+  S.toSpawn=Math.min(12+7*(w-1),120);S.maxAlive=Math.min(20+3*w,isTouch?36:50);S.spawnGap=Math.max(0.25,1.1-w*0.08);S.spawnT=0.5;
   S.forceBrutes=w>=3?Math.floor(w/3):0;
   sfxBell();announce('அலை '+w,'Wave '+w,2200);
   if(w%5===0){var bz=spawnZombie('boss');bz.hp=Math.round(bz.hp*(1+(w/5-1)*0.5));announce('தலைவன் வந்தான்!','BOSS: the Kaalan has arrived',2800);}
@@ -1522,7 +1571,7 @@ function update(dt){
     var sp=(sprint?8.2:5.2),sy=Math.sin(P.yaw),cy=Math.cos(P.yaw);
     P.x+=(-sy*f+cy*r)*sp*dt;P.z+=(-cy*f-sy*r)*sp*dt;
     if(!(TOWER&&TOWER.up)){collide(P,0.45);gateBlock(P,0.45);}
-    P.x=Math.max(-WB,Math.min(WB,P.x));P.z=Math.max(-WB,Math.min(WB,P.z));
+    islClamp(P,0);
     towerStep(dt);
   }
   vanStep(dt);
@@ -1700,7 +1749,9 @@ if(isTouch){
 /* ---------- input ---------- */
 window.addEventListener('keydown',function(e){
   if(SB&&!SB.hidden){if(e.code==='Escape')closeSettings();return;}
-  if(e.code==='KeyM'){muted=!muted;applyVol();return;}
+  if(e.code==='KeyN'){muted=!muted;applyVol();return;}
+  if(e.code==='KeyM'){if(islCache.toggleMap)islCache.toggleMap();return;}
+  if(islCache.mapOpen){if(e.code==='Escape'){islCache.toggleMap(false);}return;}
   if(e.code==='KeyF'){toggleFS();return;}
   if(S.mode==='play'){
     /* weapon wheel: hold Tab, then Tab+1..5 or move the mouse and release */
@@ -1933,12 +1984,12 @@ function npcUpdate(dt){
     if(n.mark){n.mark.rotation.y+=dt*2;n.mark.position.y=n.markY+Math.sin(t*3+i)*0.07;}
   }
   guard.cd-=dt;guard.aim=null;
-  var tz=null,bd=30;
+  var tz=null,bd=20;
   for(i=0;i<Z.length;i++){var zz=Z[i],zd=Math.hypot(zz.x-guard.x,zz.z-guard.z);if(zd<bd){bd=zd;tz=zz;}}
   if(tz){
     guard.aim=Math.atan2(tz.x-guard.x,tz.z-guard.z);
     if(guard.cd<=0){
-      guard.cd=1.0;tz.hp-=1.5;tz.stagger=0.12;
+      guard.cd=2.6;tz.hp-=0.6;tz.stagger=0.05;
       _e.set(tz.x,1.2,tz.z);burst(_e,5,0,3);
       _tip.set(guard.x,guard.by+1.4,guard.z);var len=_tip.distanceTo(_e);
       gt.position.copy(_tip).lerp(_e,0.5);gt.scale.set(1,1,Math.max(len,0.1));gt.lookAt(_e);gt.visible=true;gtT=0.06;
@@ -2166,7 +2217,7 @@ function vanCollide(sh,ch){
       }
     }
   }
-  V.x=Math.max(-WB+3,Math.min(WB-3,V.x));V.z=Math.max(-WB+3,Math.min(WB-3,V.z));
+  islClamp(V,3);
   return hit;
 }
 var eng=null;
@@ -2231,7 +2282,7 @@ function toggleDrive(){
     var sh=Math.sin(V.h),ch=Math.cos(V.h),opts=[[ch*2.6,-sh*2.6],[-ch*2.6,sh*2.6],[-sh*4.6,-ch*4.6],[sh*4.6,ch*4.6]],ok=null;
     for(var i=0;i<opts.length;i++){
       var ex=V.x+opts[i][0],ez=V.z+opts[i][1];
-      if(!blocked(ex,ez,0.5)&&Math.abs(ex)<WB&&Math.abs(ez)<WB){ok=[ex,ez];break;}
+      if(!blocked(ex,ez,0.5)&&onIsland(ex,ez)){ok=[ex,ez];break;}
     }
     if(!ok)ok=[V.x+opts[0][0],V.z+opts[0][1]];
     V.drive=false;V.v=0;P.x=ok[0];P.z=ok[1];P.y=0;
@@ -2574,11 +2625,462 @@ wheelEl.addEventListener('pointerdown',function(e){
 });
 window.addEventListener('blur',function(){wheelClose(false);});
 
+/* ======================================================================
+   ISLAND LEVEL (built from the map plan)
+   ====================================================================== */
+var ISLS={used:{},mi:0,k:0,medicine:false,battery:false};
+var islCache={};
+function islReset(){ISLS.used={};ISLS.mi=0;ISLS.k=0;ISLS.medicine=false;ISLS.battery=false;}
+function islKill(z){if(islCache.kill)islCache.kill(z);}
+function usedNow(id){return ISLS.used[id]===S.wave;}
+(function(){
+  var i,j,k;
+  var islStart=scene.children.length;
+  var r2=mulberry(4242);
+  var Y=new THREE.Vector3(0,1,0);
+  function strut(a,b,r,mat,par){var dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],L=Math.sqrt(dx*dx+dy*dy+dz*dz);var m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,5),mat);m.position.set((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2);m.quaternion.setFromUnitVectors(Y,new THREE.Vector3(dx/L,dy/L,dz/L));(par||scene).add(m);return m;}
+  function colRect(cx,cz,w,d,r){var st=r*1.5,u,v;for(u=-w/2;u<=w/2+0.01;u+=st){addCol(cx+u,cz-d/2,r,6);addCol(cx+u,cz+d/2,r,6);}for(v=-d/2+st;v<d/2-0.01;v+=st){addCol(cx-w/2,cz+v,r,6);addCol(cx+w/2,cz+v,r,6);}}
+  function shape(scale,rx,rz,ed){var pts=[],N=96;for(var q=0;q<N;q++){var th=q/N*6.2832,e=(ed?ed(th):1)*scale;pts.push(new THREE.Vector2(Math.cos(th)*rx*e,-Math.sin(th)*rz*e));}return new THREE.Shape(pts);}
+  function flat(shp,mat,y){var m=new THREE.Mesh(new THREE.ShapeGeometry(shp),mat);m.rotation.x=-Math.PI/2;m.position.y=y;scene.add(m);return m;}
+
+  /* ---- textures ---- */
+  var grassTex=canvasTex(256,256,function(x,w,h){
+    x.fillStyle='#2c4a2a';x.fillRect(0,0,w,h);
+    for(var q=0;q<900;q++){x.fillStyle='rgba('+(40+Math.random()*30|0)+','+(90+Math.random()*50|0)+','+(40+Math.random()*20|0)+',0.35)';x.fillRect(Math.random()*w,Math.random()*h,2,4);}
+    for(q=0;q<26;q++){x.fillStyle='rgba(74,59,42,0.28)';x.beginPath();x.arc(Math.random()*w,Math.random()*h,5+Math.random()*12,0,6.28);x.fill();}
+  }).tex;
+  grassTex.wrapS=grassTex.wrapT=THREE.RepeatWrapping;grassTex.repeat.set(0.09,0.09);
+  var waveTex=canvasTex(256,256,function(x,w,h){
+    x.fillStyle='#0b3466';x.fillRect(0,0,w,h);x.strokeStyle='rgba(140,200,255,0.22)';x.lineWidth=2;
+    for(var q=0;q<40;q++){var yy=Math.random()*h,xx=Math.random()*w,l=16+Math.random()*30;x.beginPath();x.moveTo(xx,yy);x.quadraticCurveTo(xx+l/2,yy-4,xx+l,yy);x.stroke();}
+  }).tex;
+  waveTex.wrapS=waveTex.wrapT=THREE.RepeatWrapping;waveTex.repeat.set(60,60);
+  var lakeTex=waveTex.clone();lakeTex.needsUpdate=true;lakeTex.repeat.set(0.06,0.06);
+
+  /* ---- ocean, shore, island ---- */
+  var oceanMat=new THREE.MeshLambertMaterial({map:waveTex,emissive:0x07224a});
+  ground.material=oceanMat;ground.geometry.dispose();ground.geometry=new THREE.PlaneGeometry(1200,1200);ground.position.y=-0.3;
+  var foam=flat(shape(1.09,ISL.rx,ISL.rz,islEdge),new THREE.MeshBasicMaterial({color:0x8fd0ff,transparent:true,opacity:0.16,depthWrite:false}),-0.2);
+  var sand=flat(shape(1.0,ISL.rx,ISL.rz,islEdge),new THREE.MeshLambertMaterial({color:0xc9b27c,emissive:0x2a2414}),-0.03);sand.receiveShadow=SHADOWS;
+  var isle=flat(shape(0.9,ISL.rx,ISL.rz,islEdge),new THREE.MeshLambertMaterial({map:grassTex}),-0.01);isle.receiveShadow=SHADOWS;
+  var lakePts=[];for(i=0;i<64;i++){var th=i/64*6.2832,e=1+0.05*Math.sin(th*3)+0.04*Math.cos(th*5);lakePts.push(new THREE.Vector2(Math.cos(th)*LAKE.rx*e+LAKE.x,-(Math.sin(th)*LAKE.rz*e+LAKE.z)));}
+  var bank=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(lakePts.map(function(p){return new THREE.Vector2(LAKE.x+(p.x-LAKE.x)*1.1,-LAKE.z+(p.y+LAKE.z)*1.12);}))),lam(0x2b2a1e));bank.rotation.x=-Math.PI/2;bank.position.y=0.03;scene.add(bank);
+  var lake=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(lakePts)),new THREE.MeshLambertMaterial({map:lakeTex,color:0x66b8e8,emissive:0x0a3a66}));lake.rotation.x=-Math.PI/2;lake.position.y=0.05;scene.add(lake);
+  /* lake is blocked by a ring of colliders (pier gap on the west shore) */
+  for(i=0;i<56;i++){var a=i/56*6.2832,cx=LAKE.x+Math.cos(a)*LAKE.rx*0.97,cz=LAKE.z+Math.sin(a)*LAKE.rz*0.97;if(cx<44&&Math.abs(cz-LAKE.z)<4.2)continue;addCol(cx,cz,2.8,1);}
+  for(i=0;i<40;i++){var a2=i/40*6.2832;addCol(LAKE.x+Math.cos(a2)*LAKE.rx*0.62,LAKE.z+Math.sin(a2)*LAKE.rz*0.62,5,1);}
+  addCol(LAKE.x,LAKE.z,8,1);addCol(LAKE.x-14,LAKE.z,6,1);addCol(LAKE.x+14,LAKE.z,6,1);
+
+  /* ---- roads and paths ---- */
+  var roadMat=lam(0x3f382e),pathMat=lam(0x6b5a40),dashMat=bas(0xcfc6a6);
+  ROADS.forEach(function(rd){
+    var m=rd.dash?pathMat:roadMat;
+    for(var q=0;q<rd.pts.length-1;q++){
+      var A=rd.pts[q],B=rd.pts[q+1],L=Math.hypot(B[0]-A[0],B[1]-A[1]),ang=Math.atan2(B[0]-A[0],B[1]-A[1]);
+      var s=recv(new THREE.Mesh(new THREE.PlaneGeometry(rd.w,L+rd.w*0.35),m));s.rotation.x=-Math.PI/2;s.rotation.z=-ang;s.position.set((A[0]+B[0])/2,0.026,(A[1]+B[1])/2);scene.add(s);
+      if(!rd.dash){
+        for(var t=2;t<L-2;t+=7){var d=new THREE.Mesh(new THREE.PlaneGeometry(0.22,2.6),dashMat);d.rotation.x=-Math.PI/2;d.rotation.z=-ang;d.position.set(A[0]+(B[0]-A[0])*t/L,0.03,A[1]+(B[1]-A[1])*t/L);scene.add(d);}
+      }
+    }
+    for(q=1;q<rd.pts.length-1;q++){var j2=new THREE.Mesh(new THREE.CircleGeometry(rd.w/2,12),m);j2.rotation.x=-Math.PI/2;j2.position.set(rd.pts[q][0],0.026,rd.pts[q][1]);scene.add(j2);}
+  });
+
+  /* ---- shared pieces ---- */
+  var winGeo=new THREE.PlaneGeometry(1.0,1.3),winLit=new THREE.MeshBasicMaterial({color:0xffbb55}),winDark=new THREE.MeshBasicMaterial({color:0x141a28});
+  function windows(g,w,d,h,floors,lit){
+    var cols=Math.max(2,Math.floor(w/2.8));
+    for(var f=0;f<floors;f++)for(var c=0;c<cols;c++){
+      var x=-w/2+(c+0.5)*(w/cols),y=1.9+f*(h-2.2)/Math.max(1,floors);
+      [[1,0],[-1,Math.PI]].forEach(function(s){var m=new THREE.Mesh(winGeo,r2()<lit?winLit:winDark);m.position.set(x,y,s[0]*(d/2+0.03));m.rotation.y=s[1];g.add(m);});
+    }
+  }
+  function building(x,z,w,d,h,wall,roof,floors,lit){
+    var g=new THREE.Group();g.position.set(x,0,z);scene.add(g);
+    box(w,h,d,lam(wall,0x0c0c10),0,h/2,0,g);box(w+0.7,0.5,d+0.7,lam(roof),0,h+0.25,0,g);
+    windows(g,w,d,h,floors||1,lit===undefined?0.5:lit);
+    colRect(x,z,w+0.6,d+0.6,1.3);return g;
+  }
+  function beam(x,z,col,h,op){
+    var m=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,h,10,1,true),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op||0.2,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,side:THREE.DoubleSide}));
+    m.position.set(x,h/2,z);m.raycast=function(){};scene.add(m);glow(x,0.4,z,5,col,0.6);return m;
+  }
+  var ICON={};
+  function iconTex(kind){
+    if(ICON[kind])return ICON[kind];
+    var cols={mission:'#f2b01e',safe:'#3ddc6b',supply:'#33c4ff',horde:'#ff4a3a'},col=cols[kind];
+    var t=canvasTex(128,128,function(x,w,h){
+      x.fillStyle='rgba(8,12,34,.92)';x.beginPath();x.arc(64,64,56,0,6.2832);x.fill();x.lineWidth=7;x.strokeStyle=col;x.stroke();x.fillStyle=col;x.strokeStyle=col;
+      if(kind==='mission'){x.fillRect(58,30,12,40);x.beginPath();x.arc(64,86,7,0,6.2832);x.fill();}
+      else if(kind==='safe'){x.beginPath();x.moveTo(32,68);x.lineTo(64,36);x.lineTo(96,68);x.lineTo(86,68);x.lineTo(86,92);x.lineTo(42,92);x.lineTo(42,68);x.closePath();x.fill();x.fillStyle='#0b0e2b';x.fillRect(58,70,12,22);}
+      else if(kind==='supply'){x.fillRect(36,44,56,44);x.fillStyle='#0b0e2b';x.fillRect(36,60,56,6);x.fillRect(61,44,6,44);}
+      else{x.beginPath();x.arc(64,58,26,0,6.2832);x.fill();x.fillRect(48,70,32,22);x.fillStyle='#0b0e2b';x.beginPath();x.arc(54,58,6,0,6.2832);x.arc(74,58,6,0,6.2832);x.fill();x.fillRect(60,70,3,12);x.fillRect(66,70,3,12);}
+    }).tex;
+    return (ICON[kind]=t);
+  }
+  var pins=[];
+  function pin(kind,x,z,y){
+    var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:iconTex(kind),transparent:true,depthTest:false,fog:false}));
+    sp.position.set(x,y||5,z);sp.scale.set(4.2,4.2,1);sp.renderOrder=12;sp.raycast=function(){};scene.add(sp);pins.push({s:sp,x:x,z:z,y:y||5});return sp;
+  }
+  var labels=[];
+  function label(txt,x,y,z,kind){
+    var cv=canvasTex(512,112,function(c,w,h){
+      c.fillStyle='rgba(8,12,34,.85)';c.strokeStyle={mission:'#f2b01e',safe:'#3ddc6b',supply:'#33c4ff',horde:'#ff4a3a',plain:'#f4ecd8'}[kind||'plain'];c.lineWidth=5;
+      c.beginPath();c.moveTo(24,6);c.lineTo(w-24,6);c.quadraticCurveTo(w-6,6,w-6,28);c.lineTo(w-6,h-28);c.quadraticCurveTo(w-6,h-6,w-24,h-6);c.lineTo(24,h-6);c.quadraticCurveTo(6,h-6,6,h-28);c.lineTo(6,28);c.quadraticCurveTo(6,6,24,6);c.closePath();c.fill();c.stroke();
+      c.fillStyle='#f4ecd8';c.font='700 46px "Azeret Mono",monospace';c.textAlign='center';c.textBaseline='middle';c.fillText(txt,w/2,h/2+3);
+    }).tex;
+    var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:cv,transparent:true,depthTest:false,fog:false}));
+    sp.position.set(x,y,z);sp.scale.set(16,3.5,1);sp.renderOrder=11;sp.raycast=function(){};scene.add(sp);labels.push({s:sp,x:x,z:z});return sp;
+  }
+  function ipoint(o){var n={id:o.id,name:o.name||'',en:o.en,x:o.x,z:o.z,by:0,root:new THREE.Group(),base:0,noLook:true,talkable:true,mark:null,markY:0,talk:function(){if(islCache.missionTalk&&islCache.missionTalk(o.id))return;o.talk();},aim:null,cd:0};NPCS.push(n);return n;}
+  function crate(x,z,col,par){var g=new THREE.Group();g.position.set(x,0,z);scene.add(g);box(1.6,1.1,1.2,lam(col,col),0,0.55,0,g);box(1.7,0.12,1.3,lam(0x222a3a),0,1.15,0,g);box(0.12,1.1,1.25,lam(0x222a3a),0,0.55,0,g);addCol(x,z,1.1,1.2);glow(x,1.2,z,4,col,0.7);return g;}
+  function tent(x,z,ry,col){var g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;scene.add(g);var m=new THREE.Mesh(new THREE.ConeGeometry(2.1,2.1,4),lam(col,0x0a0a10));m.rotation.y=Math.PI/4;m.position.y=1.05;if(SHADOWS)m.castShadow=true;g.add(m);box(0.7,1.3,0.08,lam(0x16161e),0,0.65,1.5,g);addCol(x,z,1.9,2.2);return g;}
+  function campfire(x,z,s){for(var q=0;q<6;q++){var a=q/6*6.2832;var st=new THREE.Mesh(new THREE.DodecahedronGeometry(0.22),lam(0x5a5a62));st.position.set(x+Math.cos(a)*0.6,0.15,z+Math.sin(a)*0.6);scene.add(st);}flame(x,0.3,z,1.5*(s||1),scene);flame(x+0.2,0.25,z+0.1,1,scene);addCol(x,z,0.8,1);}
+  function lamp(x,z){box(0.14,3.4,0.14,lam(0x2a2a30),x,1.7,z,scene);var b=new THREE.Mesh(new THREE.SphereGeometry(0.24,8,6),bas(0xffd98a));b.position.set(x,3.5,z);scene.add(b);glow(x,3.5,z,3.4,0xffd98a,0.7);addCol(x,z,0.3,3);}
+  function rock(x,z,s){var m=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),lam(0x4a4a52));m.scale.set(1,0.7+r2()*0.4,1);m.position.set(x,s*0.4,z);m.rotation.y=r2()*6;if(SHADOWS)m.castShadow=true;scene.add(m);addCol(x,z,s*0.9,s);}
+
+  /* ================= RADIO TOWER ================= */
+  (function(){
+    var P0=LM.radio,g=new THREE.Group();g.position.set(P0.x,0,P0.z);scene.add(g);
+    var steel=lam(0x9a9aa6,0x14141a),red=lam(0xd9382a,0x3a0a06),hut=lam(0x5a6a4a,0x0a100a);
+    var H=42,segs=7,w0=3.4,sh=H/segs;
+    for(var s=0;s<segs;s++){
+      var y0=s*sh,y1=(s+1)*sh,a=w0*(1-s/(segs+1.2)),b=w0*(1-(s+1)/(segs+1.2));
+      var cs=[[-1,-1],[1,-1],[1,1],[-1,1]];
+      cs.forEach(function(c,ix){
+        strut([c[0]*a,y0,c[1]*a],[c[0]*b,y1,c[1]*b],0.14,s%2?red:steel,g);
+        var n=cs[(ix+1)%4];strut([c[0]*a,y0,c[1]*a],[n[0]*b,y1,n[1]*b],0.07,steel,g);
+      });
+    }
+    var topW=w0*(1-segs/(segs+1.2));
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(function(d){strut([0,H-1,0],[d[0]*2.2,H-3.2,d[1]*2.2],0.08,steel,g);});
+    var dish=new THREE.Mesh(new THREE.ConeGeometry(1.1,0.7,12,1,true),lam(0xdddde6));dish.rotation.z=Math.PI/2;dish.position.set(1.6,H*0.7,0);g.add(dish);
+    var mast=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.16,8,6),steel);mast.position.set(0,H+3.5,0);g.add(mast);
+    var bc=new THREE.Mesh(new THREE.SphereGeometry(0.45,10,8),bas(0xff2a1a));bc.position.set(0,H+7.6,0);g.add(bc);
+    islCache.beacon=bc;islCache.beaconGlow=glow(P0.x,H+7.6,P0.z,12,0xff3a2a,0.9);
+    var bl=new THREE.PointLight(0xff3a2a,1.0,26);bl.position.set(0,H+7,0);g.add(bl);islCache.beaconLight=bl;
+    addCol(P0.x,P0.z,3.2,H);
+    /* control hut + generator + sandbags */
+    var hx=P0.x+9,hz=P0.z+6;
+    var hg=building(hx,hz,6,5,3.4,0x5a6a4a,0x2a3a26,1,0.8);
+    box(1.2,2.2,0.1,lam(0x2a1a0e),0,1.1,2.55,hg);
+    box(2.2,1.2,1.4,lam(0xd9a441,0x3a2800),P0.x-8,0.6,P0.z+7,scene);addCol(P0.x-8,P0.z+7,1.4,1.2);
+    for(i=0;i<9;i++){var ang=-0.2+i*0.25;box(1.3,0.6,0.6,lam(0xb8a070),P0.x+Math.sin(ang)*6,0.3,P0.z+Math.cos(ang)*6+2,scene);}
+    lamp(P0.x+5,P0.z+11);lamp(P0.x-6,P0.z+11);
+    for(i=0;i<7;i++)rock(P0.x-14+r2()*34,P0.z-6-r2()*10,1.6+r2()*2.4);
+    beam(P0.x,P0.z,0xf2b01e,70,0.16);
+    pin('mission',P0.x,P0.z,H+14);label('RADIO TOWER',P0.x,H+19,P0.z,'mission');
+    ipoint({id:'radio',x:P0.x+3.2,z:P0.z+3.2,en:'Use radio',talk:function(){speak('Radio','The radio crackles. Keep holding the island.');}});
+  })();
+
+  /* ================= FOREST CAMP (safe house) ================= */
+  (function(){
+    var P0=LM.forest;
+    campfire(P0.x,P0.z,1.2);var fl=new THREE.PointLight(0xff9a3c,1.2,30);fl.position.set(P0.x,2,P0.z);scene.add(fl);
+    tent(P0.x-8,P0.z-3,0.7,0x3f6a3a);tent(P0.x+7,P0.z-5,-0.6,0x6a4a2a);tent(P0.x-3,P0.z+8,3.0,0x2f5a7a);
+    [[-2.5,1.5],[2.4,1.2],[0.6,-2.6]].forEach(function(p){var lg=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,1.8,7),lam(0x6a4a2a));lg.rotation.z=Math.PI/2;lg.rotation.y=Math.atan2(p[1],p[0]);lg.position.set(P0.x+p[0],0.28,P0.z+p[1]);scene.add(lg);});
+    crate(P0.x+9,P0.z+4,0x8a6a3a);crate(P0.x+10.6,P0.z+4.4,0x7a5a2a);
+    lamp(P0.x-12,P0.z+4);lamp(P0.x+12,P0.z-1);
+    for(i=0;i<8;i++){var a=i/8*6.2832;box(0.25,2.2,0.25,lam(0x5a3d22),P0.x+Math.cos(a)*15,1.1,P0.z+Math.sin(a)*15,scene);}
+    beam(P0.x,P0.z,0x3ddc6b,34,0.14);pin('safe',P0.x,P0.z,9);label('FOREST CAMP',P0.x,13.5,P0.z,'safe');
+    ipoint({id:'forest',x:P0.x+1.5,z:P0.z+3,en:'Rest at safe house',talk:function(){
+      if(usedNow('forest')){speak('Forest Camp','The fire is low. Come back after the next wave.');return;}
+      if(S.hp>=S.maxHp-4){speak('Forest Camp','You look fine. Rest here when you are hurt.');return;}
+      ISLS.used.forest=S.wave;S.hp=Math.min(S.maxHp,S.hp+40);sfxPickup();speak('Forest Camp','You rest by the fire. +40 health.');
+    }});
+  })();
+
+  /* ================= ABANDONED FACTORY ================= */
+  (function(){
+    var P0=LM.factory,g=new THREE.Group();g.position.set(P0.x,0,P0.z);scene.add(g);
+    var rust=lam(0x5a4640,0x100808),dark=lam(0x3a3238,0x08060a),brick=lam(0x7a4a3a,0x140a06);
+    box(32,9,16,rust,0,4.5,0,g);box(33,0.6,17,dark,0,9.3,0,g);
+    for(i=0;i<5;i++)box(6,2.4,16.4,lam(0x44383a),-13+i*6.5,10.5,0,g);
+    box(14,6,10,brick,-6,3,-14,g);box(15,0.5,11,dark,-6,6.2,-14,g);
+    box(10,12,8,brick,16,6,-14,g);
+    [[-10,-8],[-4,-8],[2,-8]].forEach(function(p,ix){var c=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.7,22+ix*3,10),brick);c.position.set(p[0]+14,11+ix*1.5,p[1]-6);if(SHADOWS)c.castShadow=true;g.add(c);glow(P0.x+p[0]+14,23+ix*3,P0.z+p[1]-6,5,0xff8a3a,0.5);addCol(P0.x+p[0]+14,P0.z+p[1]-6,1.9,24);});
+    for(i=0;i<8;i++){var wx=-14+i*4;[1,-1].forEach(function(s){var wm=new THREE.Mesh(winGeo,r2()<0.5?winLit:winDark);wm.scale.set(1.3,1.2,1);wm.position.set(wx,5,s*8.05);wm.rotation.y=s>0?0:Math.PI;g.add(wm);});}
+    for(i=0;i<3;i++){var pp=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,14,8),lam(0x6a6a72));pp.rotation.z=Math.PI/2;pp.position.set(-18-1.2,3.2+i*1.3,-6+i*2);g.add(pp);}
+    colRect(P0.x,P0.z,33,17,1.6);colRect(P0.x-6,P0.z-14,15,11,1.6);colRect(P0.x+16,P0.z-14,10,8,1.6);
+    for(i=0;i<9;i++){var cr=box(2.4,1.4,1.4,lam([0x7a3a2a,0x2a5a6a,0x8a7a3a][i%3]),P0.x-22+r2()*10,0.7,P0.z+12+r2()*8,scene);cr.rotation.y=r2()*3;addCol(cr.position.x,cr.position.z,1.4,1.4);}
+    for(i=0;i<26;i++){var fx=P0.x-26+i*2;if(i>=10&&i<=15)continue;box(0.12,2.2,0.12,lam(0x444448),fx,1.1,P0.z+24,scene);if(i<25&&!(i>=9&&i<=15))box(2.05,0.1,0.06,lam(0x555560),fx+1,1.7,P0.z+24,scene);}
+    for(i=0;i<5;i++)addCol(P0.x-26+i*5,P0.z+24,0.7,2);for(i=0;i<5;i++)addCol(P0.x+4+i*5,P0.z+24,0.7,2);
+    flame(P0.x-18,0.2,P0.z+16,1.4,scene);addCol(P0.x-18,P0.z+16,0.8,1);
+    lamp(P0.x-4,P0.z+20);lamp(P0.x+6,P0.z+20);
+    pin('horde',P0.x,P0.z,18);label('ABANDONED FACTORY',P0.x,24,P0.z,'horde');
+  })();
+
+  /* ================= LAKE DOCK (supply drop) ================= */
+  (function(){
+    var wood=lam(0x7a5a38,0x140c06),px0=LAKE.x-31,pz=LAKE.z;
+    for(i=0;i<19;i++){box(0.9,0.14,3.4,wood,px0+i*1.0,0.22,pz,scene);}
+    [-1.6,1.6].forEach(function(s){for(var q=0;q<10;q++){box(0.22,0.9,0.22,wood,px0+q*2,0.5,pz+s,scene);addCol(px0+q*2,pz+s*1.25,0.55,1);}box(19,0.1,0.12,wood,px0+9,0.9,pz+s,scene);});
+    addCol(px0+19.2,pz,1.8,1);
+    var bt=new THREE.Group();bt.position.set(px0+9,0.1,pz-9);bt.rotation.y=0.3;scene.add(bt);box(1.8,0.6,4.6,lam(0xb8442c),0,0.35,0,bt);box(1.5,0.1,3.6,lam(0xd8c8a0),0,0.68,0,bt);islCache.boat=bt;
+    var sx=px0+18,sz=pz;crate(sx,sz,0x33c4ff);
+    beam(sx,sz,0x33c4ff,30,0.18);pin('supply',sx,sz,8);label('LAKE DOCK',sx,12.5,sz,'supply');
+    lamp(px0+3,pz-2.6);
+    ipoint({id:'dock',x:sx-2.4,z:sz,en:'Open supply drop',talk:function(){
+      if(usedNow('dock')){speak('Supply Drop','Empty. A new drop lands every wave.');return;}
+      ISLS.used.dock=S.wave;S.reserve+=60;S.nades=(S.nades||0)+1;S.cash+=80;S.hp=Math.min(S.maxHp,S.hp+15);sfxPickup();speak('Supply Drop','+60 ammo, +1 grenade, +80 cash, +15 health.');
+    }});
+  })();
+
+  /* ================= FARM ZONE (mission) ================= */
+  (function(){
+    var P0=LM.farm;
+    paddy(78,20,22,14);paddy(104,20,20,14);paddy(78,52,22,14);
+    var bx=P0.x,bz=P0.z+14;
+    var barn=building(bx,bz,12,8,5.2,0x8a3a2a,0x3a2418,1,0.3);box(3.2,3.6,0.1,lam(0x2a1a0e),0,1.8,4.05,barn);
+    var sl=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,9,12),lam(0xb8b8c0,0x14141a));sl.position.set(bx+10,4.5,bz);scene.add(sl);addCol(bx+10,bz,1.8,9);
+    for(i=0;i<8;i++){var hb=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,0.9,10),lam(0xc9a850,0x2a2008));hb.rotation.z=Math.PI/2;hb.position.set(P0.x-10+(i%4)*1.6,0.5+(i>3?0.9:0),P0.z+6+(i>3?0.5:0));scene.add(hb);}
+    addCol(P0.x-8.6,P0.z+6.4,2.6,1.6);addCol(P0.x-5.6,P0.z+6.4,2.4,1.6);
+    [[78,20],[104,20],[78,52]].forEach(function(p){box(0.12,2,0.12,lam(0x5a3d22),p[0],1,p[1],scene);box(1.6,0.12,0.12,lam(0x5a3d22),p[0],1.7,p[1],scene);box(0.5,0.9,0.3,lam(0xb85a3a),p[0],1.4,p[1],scene);var hd=new THREE.Mesh(new THREE.SphereGeometry(0.28,8,6),lam(0xd8c890));hd.position.set(p[0],2.1,p[1]);scene.add(hd);addCol(p[0],p[1],0.5,2);});
+    var wm=new THREE.Group();wm.position.set(110,0,50);scene.add(wm);islCache.wm=wm;
+    var tw=new THREE.Mesh(new THREE.CylinderGeometry(1.0,2.0,11,8),lam(0xc9c0a8,0x14120c));tw.position.y=5.5;wm.add(tw);box(2.6,1.4,2.6,lam(0x6a3a2a),0,11.4,0,wm);
+    var hub=new THREE.Group();hub.position.set(0,11.4,1.6);wm.add(hub);for(i=0;i<4;i++){var bl=new THREE.Mesh(new THREE.BoxGeometry(0.5,5.4,0.1),lam(0xe8dcc0));bl.position.y=2.9;var arm=new THREE.Group();arm.rotation.z=i*Math.PI/2;arm.add(bl);hub.add(arm);}islCache.blades=hub;addCol(110,50,2.2,11);
+    lamp(P0.x-6,P0.z-2);lamp(P0.x+6,P0.z+2);
+    beam(P0.x,P0.z,0xf2b01e,40,0.15);pin('mission',P0.x,P0.z,9);label('FARM ZONE',P0.x,13.5,P0.z,'mission');
+    ipoint({id:'farm',x:P0.x,z:P0.z+3,en:'Search the farm',talk:function(){
+      if(!usedNow('farm')){ISLS.used.farm=S.wave;S.reserve+=30;S.cash+=40;sfxPickup();speak('Farm Zone','Some ammo and food in the barn. +30 ammo, +40 cash.');}
+      else speak('Farm Zone','You already searched here this wave.');
+    }});
+  })();
+
+  /* ================= HOSPITAL ================= */
+  (function(){
+    var P0=LM.hospital;
+    var h=building(P0.x,P0.z,18,11,13,0xd8dce2,0x8a909a,3,0.55);
+    var wing=building(P0.x+15,P0.z+3,10,8,8,0xcfd3d8,0x8a909a,2,0.5);
+    var hp=new THREE.Mesh(new THREE.CylinderGeometry(3.6,3.6,0.18,20),lam(0x3a3f4a));hp.position.set(0,13.7,0);h.add(hp);
+    var hh=new THREE.Mesh(new THREE.PlaneGeometry(3.4,3.4),new THREE.MeshBasicMaterial({map:canvasTex(128,128,function(x,w,hh2){x.fillStyle='rgba(0,0,0,0)';x.clearRect(0,0,w,hh2);x.strokeStyle='#ffd34a';x.lineWidth=12;x.beginPath();x.arc(64,64,54,0,6.28);x.stroke();x.fillStyle='#ffd34a';x.fillRect(34,34,12,60);x.fillRect(82,34,12,60);x.fillRect(34,58,60,12);}).tex,transparent:true}));hh.rotation.x=-Math.PI/2;hh.position.set(0,13.82,0);h.add(hh);
+    var cs=makeSign(5.4,1.8,'#f4ecd8','#d9382a','மருத்துவமனை','HOSPITAL',54,26);cs.position.set(0,10.4,5.62);h.add(cs);
+    var cross=new THREE.Group();cross.position.set(-6,12.2,5.7);h.add(cross);box(1.6,0.5,0.1,bas(0xd9382a),0,0,0,cross);box(0.5,1.6,0.1,bas(0xd9382a),0,0,0,cross);
+    var amb=new THREE.Group();amb.position.set(P0.x-4,0,P0.z+13);scene.add(amb);box(3.8,1.6,1.8,lam(0xf4f4f4),0,0.9,0,amb);box(1.4,1.1,1.78,lam(0xdde0e6),1.4,0.8,0,amb);box(1.2,0.4,0.1,bas(0xd9382a),-0.4,1.1,0.92,amb);box(0.4,0.4,0.1,bas(0xff3a2a),0,1.85,0,amb);addCol(P0.x-4,P0.z+13,2.0,2);
+    glow(P0.x-4,2.1,P0.z+13,4,0xff3a2a,0.7);
+    lamp(P0.x+8,P0.z+12);lamp(P0.x-10,P0.z+12);
+    pin('horde',P0.x,P0.z,17);label('HOSPITAL',P0.x,22,P0.z,'horde');
+    ipoint({id:'hosp',x:P0.x-4,z:P0.z+10,en:'Search medical supplies',talk:function(){
+      if(usedNow('hosp')){speak('Hospital','Cabinets are empty this wave.');return;}
+      if(S.hp>=S.maxHp-4){speak('Hospital','You are fine. Medical supplies are here when you need them.');return;}
+      ISLS.used.hosp=S.wave;S.hp=Math.min(S.maxHp,S.hp+50);sfxPickup();speak('Hospital','Bandages and painkillers. +50 health.');
+    }});
+  })();
+
+  /* ================= POLICE STATION (safe house) ================= */
+  (function(){
+    var P0=LM.police;
+    var b=building(P0.x,P0.z,14,8,5,0x4a5a7a,0x23304a,1,0.7);
+    var sg=makeSign(6,1.5,'#1a2a5a','#f4ecd8','காவல் நிலையம்','POLICE',54,26);sg.position.set(0,4.2,4.07);b.add(sg);
+    box(1.4,2.4,0.1,lam(0x1a1a22),4,1.2,4.06,b);
+    var l1=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.35,0.5),bas(0xff2a2a)),l2=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.35,0.5),bas(0x2a6aff));
+    l1.position.set(-0.5,5.7,0);l2.position.set(0.5,5.7,0);b.add(l1);b.add(l2);islCache.pl1=l1;islCache.pl2=l2;
+    [[P0.x+12,P0.z+8,0.4],[P0.x+16,P0.z+6,-0.3]].forEach(function(p){var c=new THREE.Group();c.position.set(p[0],0,p[1]);c.rotation.y=p[2];scene.add(c);box(1.9,0.7,4.2,lam(0xf4f4f4),0,0.75,0,c);box(1.7,0.6,2.2,lam(0x1a2a4a),0,1.4,-0.2,c);box(1.92,0.25,1.5,lam(0x1a1a22),0,0.7,0.3,c);addCol(p[0],p[1],1.4,2);});
+    lamp(P0.x+9,P0.z+5);lamp(P0.x-9,P0.z+5);
+    beam(P0.x,P0.z+8,0x3ddc6b,30,0.14);pin('safe',P0.x,P0.z+8,9);label('POLICE STATION',P0.x,13.5,P0.z+8,'safe');
+    ipoint({id:'police',x:P0.x+4,z:P0.z+6.5,en:'Rest at safe house',talk:function(){
+      if(usedNow('police')){speak('Police Station','Quiet for now. Come back after the next wave.');return;}
+      if(S.hp>=S.maxHp-4){speak('Police Station','You look fine. The cells are safe if you need a rest.');return;}
+      ISLS.used.police=S.wave;S.hp=Math.min(S.maxHp,S.hp+40);sfxPickup();speak('Police Station','You catch your breath behind the locked door. +40 health.');
+    }});
+  })();
+
+  /* ================= BEACH CAMP (supply drop) ================= */
+  (function(){
+    var P0=LM.beach;
+    var sp=new THREE.Mesh(new THREE.CircleGeometry(11,24),lam(0xd9c28f,0x2a2414));sp.rotation.x=-Math.PI/2;sp.position.set(P0.x,0.015,P0.z);scene.add(sp);
+    tent(P0.x-6,P0.z-2,0.5,0x2f5aa8);tent(P0.x+5,P0.z-4,-0.4,0xd9702a);tent(P0.x-1,P0.z+7,2.8,0x3fa58a);
+    campfire(P0.x,P0.z,1);var fl=new THREE.PointLight(0xff9a3c,1.0,24);fl.position.set(P0.x,2,P0.z);scene.add(fl);
+    var bt=new THREE.Group();bt.position.set(P0.x+13,0.2,P0.z+7);bt.rotation.y=0.9;scene.add(bt);box(1.7,0.7,4.8,lam(0x2a5a8a),0,0.4,0,bt);box(1.5,0.1,3.8,lam(0xd8c8a0),0,0.78,0,bt);addCol(P0.x+13,P0.z+7,2.4,1);
+    var sx=P0.x+7,sz=P0.z+3;crate(sx,sz,0x33c4ff);
+    beam(sx,sz,0x33c4ff,30,0.18);pin('supply',sx,sz,8);label('BEACH CAMP',sx,12.5,sz,'supply');
+    lamp(P0.x-10,P0.z+2);
+    ipoint({id:'beach',x:sx-2.4,z:sz,en:'Open supply drop',talk:function(){
+      if(usedNow('beach')){speak('Supply Drop','Empty. A new drop lands every wave.');return;}
+      ISLS.used.beach=S.wave;S.reserve+=60;S.nades=(S.nades||0)+1;S.cash+=80;S.hp=Math.min(S.maxHp,S.hp+15);sfxPickup();speak('Supply Drop','+60 ammo, +1 grenade, +80 cash, +15 health.');
+    }});
+  })();
+
+  /* ================= MAIN VILLAGE + zombie hordes ================= */
+  pin('safe',0,-55,17);label('MAIN VILLAGE',0,22,-55,'safe');
+  HORDES.forEach(function(h){pin('horde',h.x,h.z,4.5);glow(h.x,0.5,h.z,14,0xff2a1a,0.35);});
+
+  /* ================= forest ================= */
+  (function(){
+    var spots=[],grid={},tries=0,CELL=3.2;
+    while(spots.length<520&&tries<7000){
+      tries++;
+      var x=(r2()*2-1)*ISL.rx,z=(r2()*2-1)*ISL.rz;
+      if(!treeOK(x,z))continue;
+      var dens=(z<-45||(x<-50&&z<30))?0.95:((x>70)?0.35:0.5);
+      if(r2()>dens)continue;
+      var gx=Math.floor(x/CELL),gz=Math.floor(z/CELL),key=gx+'_'+gz;if(grid[key])continue;grid[key]=1;
+      if(blocked(x,z,2.2))continue;
+      spots.push({x:x,z:z});
+    }
+    var tg=new THREE.CylinderGeometry(0.2,0.32,1,6),cg=new THREE.IcosahedronGeometry(1,0);
+    var trunks=new THREE.InstancedMesh(tg,lam(0x4a3322,0x0c0804),spots.length);
+    var crowns=new THREE.InstancedMesh(cg,new THREE.MeshLambertMaterial({color:0xffffff}),spots.length);
+    var d=new THREE.Object3D(),cc=new THREE.Color();
+    spots.forEach(function(s,q){
+      var h=5+r2()*4.5,sc=1.9+r2()*1.5;
+      d.rotation.set(0,0,0);d.position.set(s.x,h*0.3,s.z);d.scale.set(1,h*0.6,1);d.updateMatrix();trunks.setMatrixAt(q,d.matrix);
+      d.rotation.set(0,r2()*6,0);d.position.set(s.x,h*0.72,s.z);d.scale.set(sc,sc*(0.9+r2()*0.5),sc);d.updateMatrix();crowns.setMatrixAt(q,d.matrix);
+      crowns.setColorAt(q,cc.setHSL(0.27+r2()*0.08,0.5,0.16+r2()*0.12));
+      addCol(s.x,s.z,0.75,8);
+    });
+    if(SHADOWS){crowns.castShadow=true;trunks.castShadow=true;}
+    scene.add(trunks);scene.add(crowns);
+  })();
+
+  /* ---- optimization: freeze matrices of static island objects ---- */
+  (function(){
+    var skip=new Set();FLAMES.forEach(function(f){skip.add(f.m);if(f.gl)skip.add(f.gl);});
+    skip.add(islCache.wm);skip.add(islCache.boat);
+    scene.updateMatrixWorld(true);
+    function fr(o){if(skip.has(o)||o.isSprite||o.isLight)return;o.matrixAutoUpdate=false;for(var q=0;q<o.children.length;q++)fr(o.children[q]);}
+    for(var q=islStart;q<scene.children.length;q++)fr(scene.children[q]);
+  })();
+
+  /* ---- mission HUD ---- */
+  var mp=document.createElement('div');mp.className='panel-h mission';mp.hidden=true;
+  mp.innerHTML='<div class="ma" id="mArrow">&#8593;</div><div><div class="lbl">Current mission</div><div class="mt" id="mTitle"></div><div class="ms" id="mSub"></div></div>';
+  document.body.appendChild(mp);
+  var mArrow=mp.querySelector('#mArrow'),mTitle=mp.querySelector('#mTitle'),mSub=mp.querySelector('#mSub');
+  var VAI={x:12.6,z:-57.2};
+  var MIS=[
+    {t:'Find the Radio Tower',s:'Activate the signal to call for help.',x:LM.radio.x,z:LM.radio.z,type:'talk',id:'radio',reward:{c:300,s:500}},
+    {t:'Collect the supply drop',s:'Open the crate at Lake Dock.',x:LM.dock.x+16,z:LM.dock.z,type:'talk',id:'dock',reward:{a:40,c:100,s:300}},
+    {t:'Secure the Farm Zone',s:'Search the barn for supplies.',x:LM.farm.x,z:LM.farm.z,type:'talk',id:'farm',reward:{a:80,c:250,s:400}},
+    {t:'Find medicine',s:'Search the Hospital for medicine.',x:LM.hospital.x,z:LM.hospital.z,type:'talk',id:'hosp',reward:{c:100,s:300},done:function(){ISLS.medicine=true;}},
+    {t:'Deliver the medicine',s:'Take it to the Vaidyar in the temple camp.',x:VAI.x,z:VAI.z,type:'talk',id:'vaidyar',reward:{h:100,c:200,s:500}},
+    {t:'Clear the Factory',s:'Kill zombies near the Abandoned Factory.',x:LM.factory.x,z:LM.factory.z,type:'kills',n:12,r:55,reward:{a:100,c:400,s:800}},
+    {t:'Get the radio battery',s:'Search the Police Station.',x:LM.police.x+4,z:LM.police.z+8,type:'talk',id:'police',reward:{c:150,s:400},done:function(){ISLS.battery=true;}},
+    {t:'Boost the signal',s:'Install the battery at the Radio Tower.',x:LM.radio.x,z:LM.radio.z,type:'talk',id:'radio',need:'battery',needMsg:'The radio needs a battery. Search the Police Station.',reward:{c:300,s:700}},
+    {t:'Light the signal flare',s:'Reach Beach Camp and fire the flare.',x:LM.beach.x+7,z:LM.beach.z+3,type:'talk',id:'beach',reward:{a:60,c:300,s:800}},
+    {t:'Hold until rescue',s:'Survive the zombies until the boat arrives.',x:null,z:null,type:'wave',wave:8}
+  ];
+  function completeM(m){
+    var r=m.reward||{};S.cash+=r.c||0;S.reserve+=r.a||0;S.score+=r.s||0;if(r.h)S.hp=Math.min(S.maxHp,S.hp+r.h);
+    if(m.done)m.done();sfxBell();announce('பணி முடிந்தது','Mission complete · '+m.t,3000);pop('+'+(r.s||0),'MISSION');ISLS.mi++;
+  }
+  islCache.missionTalk=function(id){
+    var m=MIS[ISLS.mi];if(!m||m.type!=='talk'||m.id!==id)return false;
+    if(m.need&&!ISLS[m.need]){speak('Radio',m.needMsg);return true;}
+    if(id==='vaidyar'&&!ISLS.medicine){return false;}
+    completeM(m);return true;
+  };
+  islCache.kill=function(z){
+    var m=MIS[ISLS.mi];if(!m||m.type!=='kills')return;
+    if(Math.hypot(z.x-m.x,z.z-m.z)<m.r){ISLS.k++;if(ISLS.k>=m.n)completeM(m);}
+  };
+  if(typeof vaidyar!=='undefined'&&vaidyar){var oldV=vaidyar.talk;vaidyar.talk=function(){if(islCache.missionTalk('vaidyar'))return;oldV();};}
+  /* ---- full island map (key M / MAP button) ---- */
+  var mapEl=document.createElement('div');mapEl.className='islmap';mapEl.hidden=true;
+  mapEl.innerHTML='<div class="islmap-box"><canvas id="islMapCv" width="960" height="800"></canvas><div class="islmap-hint">Tap anywhere or press M to close</div></div>';
+  document.body.appendChild(mapEl);
+  var mcv=mapEl.querySelector('canvas'),mx=mcv.getContext('2d'),MS=3.0,MCX=480,MCY=392;
+  var PLACES=[
+    {n:'RADIO TOWER',k:'mission',x:LM.radio.x,z:LM.radio.z},{n:'FOREST CAMP',k:'safe',x:LM.forest.x,z:LM.forest.z},
+    {n:'ABANDONED FACTORY',k:'horde',x:LM.factory.x,z:LM.factory.z},{n:'MAIN VILLAGE',k:'safe',x:0,z:-55},
+    {n:'LAKE DOCK',k:'supply',x:LM.dock.x+18,z:LM.dock.z},{n:'FARM ZONE',k:'mission',x:LM.farm.x,z:LM.farm.z},
+    {n:'HOSPITAL',k:'horde',x:LM.hospital.x,z:LM.hospital.z},{n:'POLICE STATION',k:'safe',x:LM.police.x,z:LM.police.z+8},
+    {n:'BEACH CAMP',k:'supply',x:LM.beach.x+7,z:LM.beach.z+3}];
+  var EXTRA=[{n:'Shrine',x:0,z:-69,dx:1},{n:'Store',x:-13.5,z:-54,dx:-1},{n:'Healer',x:12.6,z:-57.2,dx:1},{n:'Van',x:15.3,z:-50,dx:1},{n:'Watchtower',x:-15.4,z:-44,dx:-1},{n:'Outpost gate',x:0,z:66,dx:1},{n:'Houses',x:-14,z:-3,dx:-1},{n:'Plaza',x:0,z:-30,dx:1}];
+  var KC={mission:'#f2b01e',safe:'#3ddc6b',supply:'#33c4ff',horde:'#ff4a3a'};
+  var SP=[];PLACES.forEach(function(p){SP.push({x:p.x,z:p.z,c:KC[p.k],big:1});});EXTRA.forEach(function(p){SP.push({x:p.x,z:p.z,c:'#f4ecd8'});});HORDES.forEach(function(h){SP.push({x:h.x,z:h.z,c:'#ff4a3a'});});
+  islCache.SPOTS=SP;
+  function W2(x,z){return [MCX+x*MS,MCY+z*MS];}
+  function ipath(sc){mx.beginPath();for(var q=0;q<=96;q++){var th=q/96*6.2832,e=islEdge(th)*sc,p=W2(Math.cos(th)*ISL.rx*e,Math.sin(th)*ISL.rz*e);if(q)mx.lineTo(p[0],p[1]);else mx.moveTo(p[0],p[1]);}mx.closePath();}
+  function drawMap(t){
+    mx.clearRect(0,0,960,800);
+    var g=mx.createLinearGradient(0,0,0,800);g.addColorStop(0,'#0a1a3e');g.addColorStop(1,'#07122e');mx.fillStyle=g;mx.fillRect(0,0,960,800);
+    ipath(1.09);mx.fillStyle='rgba(140,200,255,.12)';mx.fill();
+    ipath(1.0);mx.fillStyle='#c9b27c';mx.fill();ipath(0.9);mx.fillStyle='#2c4a2a';mx.fill();
+    /* lake */
+    var lc=W2(LAKE.x,LAKE.z);mx.beginPath();mx.ellipse(lc[0],lc[1],LAKE.rx*MS,LAKE.rz*MS,0,0,6.2832);mx.fillStyle='#1b5f96';mx.fill();
+    /* temple camp */
+    var tp=W2(-20,-76);mx.fillStyle='rgba(180,68,44,.55)';mx.fillRect(tp[0],tp[1],40*MS,41*MS);
+    /* roads */
+    mx.lineCap='round';mx.lineJoin='round';
+    var vr=[[0,-35],[0,89]];
+    mx.strokeStyle='#8a8070';mx.lineWidth=8*MS*0.55;mx.beginPath();var a=W2(0,-35),b=W2(0,89);mx.moveTo(a[0],a[1]);mx.lineTo(b[0],b[1]);mx.stroke();
+    ROADS.forEach(function(rd){mx.strokeStyle=rd.dash?'#a89870':'#8a8070';mx.lineWidth=rd.w*MS*0.55;if(rd.dash)mx.setLineDash([10,8]);else mx.setLineDash([]);mx.beginPath();rd.pts.forEach(function(p,q){var c=W2(p[0],p[1]);if(q)mx.lineTo(c[0],c[1]);else mx.moveTo(c[0],c[1]);});mx.stroke();});
+    mx.setLineDash([]);
+    /* hordes */
+    HORDES.forEach(function(h){var c=W2(h.x,h.z);mx.fillStyle='rgba(255,60,40,.22)';mx.beginPath();mx.arc(c[0],c[1],26,0,6.2832);mx.fill();mx.fillStyle='#ff4a3a';mx.beginPath();mx.arc(c[0],c[1],8,0,6.2832);mx.fill();mx.fillStyle='#0b0e2b';mx.fillRect(c[0]-4,c[1]-2,3,3);mx.fillRect(c[0]+1,c[1]-2,3,3);});
+    /* places */
+    mx.font='700 17px "Azeret Mono",monospace';mx.textAlign='center';mx.textBaseline='middle';
+    PLACES.forEach(function(pl){
+      var c=W2(pl.x,pl.z);mx.fillStyle='rgba(8,12,34,.92)';mx.strokeStyle=KC[pl.k];mx.lineWidth=3;mx.beginPath();mx.arc(c[0],c[1],11,0,6.2832);mx.fill();mx.stroke();
+      mx.fillStyle=KC[pl.k];mx.beginPath();mx.arc(c[0],c[1],4.5,0,6.2832);mx.fill();
+      var w=mx.measureText(pl.n).width+16;mx.fillStyle='rgba(8,12,34,.85)';mx.fillRect(c[0]-w/2,c[1]-38,w,24);mx.fillStyle='#f4ecd8';mx.fillText(pl.n,c[0],c[1]-26);
+    });
+    EXTRA.forEach(function(e){var c=W2(e.x,e.z);mx.fillStyle='#f4ecd8';mx.beginPath();mx.arc(c[0],c[1],5,0,6.2832);mx.fill();mx.font='600 12px "Azeret Mono",monospace';mx.textAlign=e.dx>0?'left':'right';mx.fillStyle='#f4ecd8';mx.fillText(e.n,c[0]+e.dx*9,c[1]+1);});
+    mx.textAlign='center';
+    Z.forEach(function(z){var c=W2(z.x,z.z);mx.fillStyle='#ff6a4a';mx.fillRect(c[0]-1.5,c[1]-1.5,3,3);});
+    pickups.forEach(function(pk){var c=W2(pk.x,pk.z);mx.fillStyle='#f2b01e';mx.fillRect(c[0]-2,c[1]-2,4,4);});
+    /* mission target + line */
+    var m=islCache.MIS[ISLS.mi];
+    if(m&&m.x!==null){
+      var tc=W2(m.x,m.z),pc=W2(P.x,P.z),pu=0.5+0.5*Math.sin(t*4);
+      mx.strokeStyle='rgba(242,176,30,.75)';mx.lineWidth=3;mx.setLineDash([12,9]);mx.beginPath();mx.moveTo(pc[0],pc[1]);mx.lineTo(tc[0],tc[1]);mx.stroke();mx.setLineDash([]);
+      mx.strokeStyle='#f2b01e';mx.lineWidth=4;mx.beginPath();mx.arc(tc[0],tc[1],18+pu*8,0,6.2832);mx.stroke();
+    }
+    /* player */
+    var pp=W2(P.x,P.z);mx.save();mx.translate(pp[0],pp[1]);mx.rotate(-P.yaw);
+    mx.fillStyle='#f2b01e';mx.strokeStyle='#0b0e2b';mx.lineWidth=3;mx.beginPath();mx.moveTo(0,-16);mx.lineTo(11,11);mx.lineTo(0,5);mx.lineTo(-11,11);mx.closePath();mx.fill();mx.stroke();mx.restore();
+    /* header + legend */
+    mx.textAlign='left';mx.font='800 26px "Anek Tamil","Azeret Mono",sans-serif';mx.fillStyle='#f2b01e';mx.fillText('KADAL OORU',24,34);
+    mx.font='600 14px "Azeret Mono",monospace';mx.fillStyle='#f4ecd8';mx.fillText('10.8231\u00B0 N  79.7871\u00B0 E',24,60);
+    var items=[['#f2b01e','You'],['#f2b01e','Mission'],['#3ddc6b','Safe house'],['#33c4ff','Supply drop'],['#ff4a3a','Zombie horde'],['#f4ecd8','Camp / village spot'],['#ff6a4a','Zombie (live)']];
+    items.forEach(function(it,q){var y=96+q*24;mx.fillStyle=it[0];mx.beginPath();mx.arc(34,y,6,0,6.2832);mx.fill();mx.fillStyle='#f4ecd8';mx.fillText(it[1],48,y+1);});
+    mx.textAlign='right';mx.fillStyle='#f4ecd8';mx.font='700 14px "Azeret Mono",monospace';mx.fillText('N \u2191',936,34);
+  }
+  function toggleMap(force){
+    var open=force===undefined?!islCache.mapOpen:force;
+    if(open&&S.mode!=='play')return;
+    if(open&&S.shop)return;
+    islCache.mapOpen=open;mapEl.hidden=!open;if(open)drawMap(0);
+  }
+  islCache.toggleMap=toggleMap;islCache.MIS=MIS;
+  mapEl.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();toggleMap(false);});
+  var mbtn=document.getElementById('btnMap');if(mbtn)mbtn.addEventListener('pointerdown',function(e){e.stopPropagation();toggleMap();});
+  var lastT='',lastS='';
+  islCache.fx=function(t,dt){
+    if(islCache.blades)islCache.blades.rotation.z+=dt*0.9;
+    waveTex.offset.set(t*0.004,t*0.0025);lakeTex.offset.set(-t*0.002,t*0.0012);
+    if(islCache.beacon){var on=((t*1.2)%2)<0.35;islCache.beacon.visible=on;islCache.beaconGlow.visible=on;islCache.beaconLight.intensity=on?1.2:0;}
+    if(islCache.pl1){var ph=Math.floor(t*4)%2===0;islCache.pl1.visible=ph;islCache.pl2.visible=!ph;}
+    if(islCache.boat)islCache.boat.position.y=0.06+Math.sin(t*1.3)*0.05;
+    var px=P.x,pz=P.z,q;
+    for(q=0;q<labels.length;q++){var L=labels[q],dd=Math.hypot(L.x-px,L.z-pz);L.s.visible=dd<95&&dd>6;var sc=Math.max(0.55,Math.min(1.3,dd/60));L.s.scale.set(16*sc,3.5*sc,1);}
+    for(q=0;q<pins.length;q++){var Pn=pins[q],d2=Math.hypot(Pn.x-px,Pn.z-pz);Pn.s.visible=d2<160&&d2>5;var ps=Math.max(0.8,Math.min(2.2,d2/45))*4.2;Pn.s.scale.set(ps,ps,1);Pn.s.position.y=Pn.y+Math.sin(t*2+q)*0.25;}
+    if(islCache.mapOpen){if(S.mode!=='play')toggleMap(false);else drawMap(t);}
+    var mm=MIS[ISLS.mi];
+    if(mm&&mm.type==='wave'&&S.mode==='play'&&!S.shop&&S.wave>=mm.wave&&S.toSpawn<=0&&Z.length===0&&S.waveGap>0){S.score+=2000;islCache.mapOpen&&toggleMap(false);gameOver('Rescued! The island is saved','ஊர் காப்பாற்றப்பட்டது');return;}
+    var show=S.mode==='play'&&!S.shop&&!islCache.mapOpen;mp.hidden=!show;
+    if(show){
+      var m=MIS[ISLS.mi],tt=m.t,ss=m.s;
+      if(m.type==='kills')ss+=' ('+ISLS.k+'/'+m.n+')';
+      if(m.x===null){ss='Wave '+S.wave+'/'+m.wave+' · '+ss;mArrow.style.display='none';}
+      else{
+        var dx=m.x-px,dz=m.z-pz,rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw),fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw);
+        var ang=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz)*57.2958;mArrow.style.display='flex';mArrow.style.transform='rotate('+ang.toFixed(0)+'deg)';
+        ss+=' · '+Math.round(Math.hypot(dx,dz))+' m';
+      }
+      if(tt!==lastT){mTitle.textContent=tt;lastT=tt;}
+      if(ss!==lastS){mSub.textContent=ss;lastS=ss;}
+    }
+  };
+})();
+function islandFx(t,dt){if(islCache.fx)islCache.fx(t,dt);}
+
 menuScene();setMode('menu');checkOrient();fsUpdate();
 var clock=new THREE.Clock(),frameN=0;
 function frame(){
   requestAnimationFrame(frame);
-  var dt=Math.min(clock.getDelta(),0.05)*(WHL.open?0.2:1);frameN++;
+  var dt=Math.min(clock.getDelta(),0.05)*(WHL.open?0.2:(islCache.mapOpen?0.03:1));frameN++;
   if(S.mode==='play'&&!S.shop){
     update(dt);updateCamera();
     if(frameN%3===0)drawRadar();
@@ -2596,7 +3098,7 @@ function frame(){
   /* shadow light follows the player so the shadow map stays sharp */
   if(SHADOWS){var cx=S.mode==='menu'?0:P.x,cz=S.mode==='menu'?-5:P.z;moonLight.position.set(cx-60,90,cz-120);moonLight.target.position.set(cx,0,cz);moonLight.target.updateMatrixWorld();}
   var nowS=performance.now()/1000;
-  templeFx(nowS);campFx(nowS,dt);outpostFx(nowS,dt);upgradeFx(nowS,dt);boomFx(dt);
+  templeFx(nowS);islandFx(nowS,dt);campFx(nowS,dt);outpostFx(nowS,dt);upgradeFx(nowS,dt);boomFx(dt);
   updateFx(dt);
   sky.position.copy(camera.position);
   renderer.render(scene,camera);
