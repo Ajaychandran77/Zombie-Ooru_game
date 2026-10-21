@@ -290,7 +290,7 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
     </div>
   </div>
 </div>
-<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · 1-7/Q weapons · Z or right click scope · G grenade · E talk / gate / van · O settings</div>
+<div class="hint" id="hint">WASD move/drive · Mouse aim · Click fire · R reload · Shift sprint · Esc pause · M sound · F fullscreen · Tab weapon wheel · Z or right click scope · G grenade · E talk / gate / van · O settings</div>
 
 <div class="tc" id="tc" hidden>
   <div id="lookZone"></div>
@@ -356,12 +356,14 @@ body.touch-mode .shopbox .items .btn{font-size:13px;padding:8px 10px}
     <dl class="keys desk-only s-menu s-pause">
       <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move. Hold <kbd>Shift</kbd> to sprint. Also drives the van.</dd>
       <dt><kbd>Mouse</kbd></dt><dd>Aim. Click to fire. Headshots hit three times harder.</dd>
+      <dt><kbd>Tab</kbd></dt><dd>Press to open the weapon wheel, press again to close. Move the mouse to a slot and click, or press <kbd>1</kbd>-<kbd>5</kbd>.</dd>
       <dt><kbd>E</kbd></dt><dd>Talk, work the gate lever, climb the tower, drive or leave the van.</dd>
       <dt><kbd>R</kbd></dt><dd>Reload. <kbd>Esc</kbd> pauses, <kbd>M</kbd> mutes.</dd>
     </dl>
     <dl class="keys touch-only s-menu s-pause">
       <dt>Left thumb</dt><dd>Drag anywhere on the left to move (or drive).</dd>
       <dt>Right thumb</dt><dd>Drag to aim. Hold FIRE and slide it to aim while shooting.</dd>
+      <dt>SWAP</dt><dd>Opens the weapon wheel. Tap a slot.</dd>
     </dl>
 
     <div class="btns">
@@ -1314,7 +1316,7 @@ function startGame(){
   if(!isTouch){lockPointer();setTimeout(function(){if(S.mode==='play'&&!document.pointerLockElement&&!everLocked)dragLook=true;},500);}
   announce('ஊர் காப்போம்','Hold the temple · E at the gate lever opens the gate',2800);
 }
-function pause(){if(S.mode!=='play')return;keys={};firing=false;setMode('pause');}
+function pause(){if(S.mode!=='play')return;wheelClose(false);keys={};firing=false;setMode('pause');}
 function resume(){audioInit();setMode('play');keys={};firing=false;lockPointer();}
 function gameOver(en,ta){
   if(document.pointerLockElement)try{document.exitPointerLock();}catch(e){}
@@ -1701,6 +1703,14 @@ window.addEventListener('keydown',function(e){
   if(e.code==='KeyM'){muted=!muted;applyVol();return;}
   if(e.code==='KeyF'){toggleFS();return;}
   if(S.mode==='play'){
+    /* weapon wheel: hold Tab, then Tab+1..5 or move the mouse and release */
+    if(e.code==='Tab'){e.preventDefault();if(!e.repeat){if(WHL.open)wheelClose(false);else wheelOpen();}return;}
+    if(WHL.open){
+      var wd=/^Digit([1-5])$/.exec(e.code);
+      if(wd){wheelSlot(+wd[1]);wheelClose(false);e.preventDefault();}
+      else if(e.code==='Escape'){wheelClose(false);}
+      return;
+    }
     if(S.shop){if(e.code==='Escape'||e.code==='KeyE')closeShop();return;}
     if(e.code==='KeyO'){pause();openSettings();return;}
     if(e.code==='KeyZ'&&W[S.wpn].zoom)S.zoom=!S.zoom;if(e.code==='KeyR')startReload();if(e.code==='KeyG')throwNade();if(e.code==='KeyE')talk();if(e.code==='KeyQ')cycleWpn();
@@ -1715,6 +1725,7 @@ window.addEventListener('keyup',function(e){keys[e.code]=false;if(e.code==='Spac
 window.addEventListener('blur',function(){if(S.mode==='play')pause();});
 var mouseDown=false,dragMoved=0;
 canvas.addEventListener('mousedown',function(e){
+  if(WHL.open&&!WHL.touch){if(e.button===0&&WHL.sel!==-1){wheelPick(WHL.sel);wheelClose(false);}return;}
   if(S.mode!=='play'||isTouch||e.button!==0)return;
   audioInit();
   if(document.pointerLockElement){firing=true;}
@@ -1726,6 +1737,7 @@ window.addEventListener('mouseup',function(){
   if(mouseDown){mouseDown=false;if(dragMoved<6&&S.mode==='play')shoot();}
 });
 window.addEventListener('mousemove',function(e){
+  if(WHL.open)return;
   if(S.mode!=='play'||isTouch)return;
   if(document.pointerLockElement){P.lookT=S.time;P.yaw-=e.movementX*0.0022*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-e.movementY*0.0022*(CFG.sens/100)));}
   else if(dragLook&&mouseDown){P.lookT=S.time;dragMoved+=Math.abs(e.movementX)+Math.abs(e.movementY);P.yaw-=e.movementX*0.0032*(CFG.sens/100);P.pitch=Math.max(-1.35,Math.min(1.35,P.pitch-e.movementY*0.0032*(CFG.sens/100)));}
@@ -2401,7 +2413,7 @@ $('shopItems').addEventListener('click',function(e){
   var it=ITEMS[+b.dataset.i];if(S.cash>=it.c&&it.f()){S.cash-=it.c;sfxPickup();}renderShop();
 });
 $('btnNade').addEventListener('pointerdown',function(e){e.preventDefault();throwNade();});
-$('btnSwap').addEventListener('pointerdown',function(e){e.preventDefault();cycleWpn();});
+$('btnSwap').addEventListener('pointerdown',function(e){e.preventDefault();if(WHL.open)wheelClose(false);else wheelOpen(true);});
 /* sniper scope: Z key, right mouse button, or the ZOOM button on touch */
 var scopeEl=document.createElement('div');
 scopeEl.style.cssText='position:fixed;inset:0;z-index:1;pointer-events:none;display:none;background:radial-gradient(circle at center,transparent 0,transparent 26vmin,#000 27.5vmin)';
@@ -2467,11 +2479,106 @@ $('btnSettings').addEventListener('click',openSettings);
 $('shopSet').addEventListener('click',openSettings);
 $('btnSet').addEventListener('pointerdown',function(e){e.preventDefault();if(S.mode==='play')pause();openSettings();});
 ['pointerdown','touchstart'].forEach(function(ev){SB.addEventListener(ev,function(){audioInit();},{passive:true});});
+
+/* ---------- weapon wheel (hold Tab) ---------- */
+var WHL={open:false,sel:-1,vx:0,vy:0,moved:false,done:false,touch:false};
+var WORDER=[
+ {w:3,slot:'LIGHT',n:1},
+ {w:2,slot:'HEAVY',n:2},{w:1,slot:'HEAVY',n:2},{w:4,slot:'HEAVY',n:2},{w:5,slot:'HEAVY',n:2},
+ {w:6,slot:'SIDE',n:3},
+ {nade:true,slot:'THROWN',n:4}];
+var wheelEl=document.createElement('div');wheelEl.id='wheel';wheelEl.hidden=true;document.body.appendChild(wheelEl);
+(function(){
+  var st=document.createElement('style');
+  st.textContent='#wheel{position:fixed;left:50%;top:50%;width:min(92vmin,560px);transform:translate(-50%,-50%);z-index:7;pointer-events:none;touch-action:none}'+
+  '#wheel.touch{pointer-events:auto}#wheel svg{width:100%;height:auto;display:block;overflow:visible;filter:drop-shadow(0 6px 24px rgba(0,0,0,.6))}'+
+  '#wheel .seg{fill:rgba(26,31,82,.8);stroke:rgba(244,236,216,.55);stroke-width:1.5;transition:fill .08s}'+
+  '#wheel .slot.act .seg{fill:rgba(62,72,150,.88)}#wheel .slot.off .seg{fill:rgba(26,31,82,.4)}'+
+  '#wheel .slot.sel .seg{fill:rgba(242,176,30,.92)}#wheel .slot.sel text{fill:#2a1a00}'+
+  '#wheel text{font-family:var(--font-display);fill:#f4ecd8;text-anchor:middle;pointer-events:none}'+
+  '#wheel .nm{font-weight:800;font-size:15px}#wheel .am{font-family:var(--font-mono);font-size:12px}'+
+  '#wheel .bd{font-family:var(--font-mono);font-size:12px;opacity:.8}#wheel .lb{font-weight:800;font-size:15px;letter-spacing:.06em;fill:#f4ecd8}'+
+  '#wheel .slot.off text{opacity:.45}';
+  document.head.appendChild(st);
+})();
+function wpt(r,a){a*=Math.PI/180;return (r*Math.cos(a)).toFixed(1)+' '+(r*Math.sin(a)).toFixed(1);}
+function wsec(a0,a1,r0,r1){return 'M'+wpt(r1,a0)+' A'+r1+' '+r1+' 0 0 1 '+wpt(r1,a1)+' L'+wpt(r0,a1)+' A'+r0+' '+r0+' 0 0 0 '+wpt(r0,a0)+' Z';}
+function wItems(){return WORDER.filter(function(it){return it.nade||S.own[it.w];});}
+function wName(i){return i===5?'Rocket':W[i].n;}
+function wheelRender(){
+  var items=wItems(),n=items.length,span=360/n,h='<svg viewBox="-230 -205 460 410">',i;
+  var big=n<=5,fs=big?15:12,fa=big?12:10,r0=64,r1=156,rm=112;
+  for(i=0;i<n;i++){
+    var it=items[i],c=-90+i*span,off=it.nade&&S.nades<=0;
+    var act=!it.nade&&it.w===S.wpn,cls='slot'+(WHL.sel===i?' sel':'')+(act?' act':'')+(off?' off':'');
+    var cx=rm*Math.cos(c*Math.PI/180),cy=rm*Math.sin(c*Math.PI/180),nm,am;
+    if(it.nade){nm='Grenade';am='\u{1F4A3} x'+S.nades;}
+    else{nm=wName(it.w);am=(it.w===S.wpn?S.mag:S.mags[it.w])+' / '+S.reserve;}
+    h+='<g class="'+cls+'" data-i="'+i+'"><path class="seg" d="'+wsec(c-span/2+1.5,c+span/2-1.5,r0,r1)+'"/>';
+    h+='<text class="nm" style="font-size:'+fs+'px" x="'+cx.toFixed(1)+'" y="'+(cy-4).toFixed(1)+'">'+nm+'</text>';
+    h+='<text class="am" style="font-size:'+fa+'px" x="'+cx.toFixed(1)+'" y="'+(cy+11).toFixed(1)+'">'+am+'</text>';
+    h+='<text class="bd" style="font-size:'+(fa-1)+'px" x="'+cx.toFixed(1)+'" y="'+(cy+24).toFixed(1)+'">'+it.slot+' · '+it.n+'</text></g>';
+  }
+  var cs=(WHL.sel==='c'?' sel':'')+(S.wpn===0?' act':'');
+  h+='<g class="slot'+cs+'" data-i="c"><circle class="seg" r="56"/><text class="nm" y="-2">'+W[0].n+'</text><text class="am" y="15">'+(S.wpn===0?S.mag:S.mags[0])+' / '+S.reserve+'</text><text class="bd" y="-30">5</text></g></svg>';
+  wheelEl.innerHTML=h;
+}
+function wheelPick(i){
+  if(i==='c'){switchWpn(0);return;}
+  var it=wItems()[i];if(!it)return;
+  if(it.nade){throwNade();return;}
+  switchWpn(it.w);
+}
+/* Tab + 1..5: 1 light, 2 heavy (cycles), 3 side, 4 grenade, 5 centre */
+function wheelSlot(num){
+  if(num===5){switchWpn(0);return;}
+  var list=wItems().filter(function(it){return it.n===num;});if(!list.length)return;
+  if(list[0].nade){throwNade();return;}
+  var at=-1;for(var k=0;k<list.length;k++)if(list[k].w===S.wpn)at=k;
+  switchWpn(list[(at+1)%list.length].w);
+}
+function wheelOpen(touch){
+  if(S.mode!=='play'||S.shop||VAN.drive||WHL.open)return;
+  WHL.open=true;WHL.sel=-1;WHL.vx=WHL.vy=0;WHL.moved=false;WHL.done=false;WHL.touch=!!touch;firing=false;
+  wheelEl.classList.toggle('touch',!!touch);wheelRender();wheelEl.hidden=false;
+}
+function wheelClose(apply){
+  if(!WHL.open)return;
+  WHL.open=false;wheelEl.hidden=true;
+  if(apply&&!WHL.done&&WHL.sel>=0)wheelPick(WHL.sel);
+}
+function wheelAim(dx,dy){
+  WHL.vx+=dx;WHL.vy+=dy;var len=Math.hypot(WHL.vx,WHL.vy);
+  if(len>130){WHL.vx*=130/len;WHL.vy*=130/len;len=130;}
+  if(len>8)WHL.moved=true;
+  var s=-1;
+  if(WHL.moved){
+    if(len<34)s='c';
+    else{
+      var items=wItems(),n=items.length,span=360/n,a=Math.atan2(WHL.vy,WHL.vx)*180/Math.PI,best=999;
+      for(var i=0;i<n;i++){var ca=(-90+i*span)*Math.PI/180,df=Math.abs(Math.atan2(Math.sin(a*Math.PI/180-ca),Math.cos(a*Math.PI/180-ca)));if(df<best){best=df;s=i;}}
+    }
+  }
+  if(s!==WHL.sel){WHL.sel=s;wheelRender();}
+}
+window.addEventListener('mousemove',function(e){
+  if(!WHL.open||WHL.touch)return;
+  if(document.pointerLockElement)wheelAim(e.movementX,e.movementY);
+  else{WHL.vx=WHL.vy=0;wheelAim(e.clientX-window.innerWidth/2,e.clientY-window.innerHeight/2);}
+});
+wheelEl.addEventListener('pointerdown',function(e){
+  if(!WHL.touch)return;
+  var g=e.target.closest&&e.target.closest('.slot');
+  if(g)wheelPick(g.dataset.i==='c'?'c':+g.dataset.i);
+  wheelClose(false);
+});
+window.addEventListener('blur',function(){wheelClose(false);});
+
 menuScene();setMode('menu');checkOrient();fsUpdate();
 var clock=new THREE.Clock(),frameN=0;
 function frame(){
   requestAnimationFrame(frame);
-  var dt=Math.min(clock.getDelta(),0.05);frameN++;
+  var dt=Math.min(clock.getDelta(),0.05)*(WHL.open?0.2:1);frameN++;
   if(S.mode==='play'&&!S.shop){
     update(dt);updateCamera();
     if(frameN%3===0)drawRadar();
