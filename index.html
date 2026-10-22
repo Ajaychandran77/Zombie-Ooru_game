@@ -260,11 +260,7 @@ body.touch-mode #radar{width:clamp(78px,11vw,92px);height:clamp(78px,11vw,92px);
     #introSkip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));background:rgba(11,14,43,.65);color:#f4ecd8;border:1px solid rgba(244,236,216,.65);border-radius:20px;padding:9px 18px;font:800 14px var(--font-display,system-ui);letter-spacing:.08em;cursor:pointer}
     #introTap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#f2b01e;color:#2a1a00;border:0;border-radius:8px;padding:16px 30px;font:800 20px var(--font-display,system-ui);cursor:pointer;box-shadow:0 0 30px rgba(242,176,30,.5)}
     </style>
-    <script>
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/insights/script.js"></script>
-</head><body>
+    </head><body>
     <!--INTRO-->
     <div id="intro" hidden>
       <video id="introVid" src="intro.mp4" preload="auto" playsinline webkit-playsinline></video>
@@ -447,7 +443,7 @@ body.touch-mode #radar{width:clamp(78px,11vw,92px);height:clamp(78px,11vw,92px);
       return true;
     }
 
-    var TEST_MODE=false; /* set to false for normal play */
+    var TEST_MODE=true; /* set to false for normal play */
     var S={mode:'menu',wave:0,score:0,kills:0,hp:100,maxHp:100,mag:12,magSize:12,reserve:60,reload:0,fireCd:0,
       combo:0,comboT:0,toSpawn:0,spawnT:0,spawnGap:1,maxAlive:14,waveGap:0,forceBrutes:0,best:0,time:0,day:0,zin:false};
     try{S.best=+localStorage.getItem('zombieOoruBest')||0;}catch(e){}
